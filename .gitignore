@@ -1,3 +1,25 @@
+*.pyc
+.DS_Store
+.idea
+build/
+data/*/data
+models/__pycache__/
+models/*/__pycache__/
+models/*/preprocess/__pycache__/
+utils/__pycache__/
+models/checkpoints/
+models/metrics/*.csv
+models/sent140/embs.json
+_build/
+_templates/
+autodoc/
+embs.json
+meta
+glove.6B.300d.txt
+glove.*.txt
+metrics/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
