@@ -5,6 +5,7 @@ import json
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as t_func
 
 
 class CnnSent(nn.Module):
@@ -29,24 +30,12 @@ class CnnSent(nn.Module):
         self.embeddings = nn.Embedding(vocab_size, word_embeddings_size)
         self.embeddings.weight = nn.Parameter(word_embeddings, requires_grad=False)
 
-        self.conv1 = nn.Sequential(
-            nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
-                      kernel_size=self.config.kernel_size[0]),
-            nn.ReLU(),
-            nn.MaxPool1d(self.config.max_sen_len - self.config.kernel_size[0] + 1)
-        )
-        self.conv2 = nn.Sequential(
-            nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
-                      kernel_size=self.config.kernel_size[1]),
-            nn.ReLU(),
-            nn.MaxPool1d(self.config.max_sen_len - self.config.kernel_size[1] + 1)
-        )
-        self.conv3 = nn.Sequential(
-            nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
-                      kernel_size=self.config.kernel_size[2]),
-            nn.ReLU(),
-            nn.MaxPool1d(self.config.max_sen_len - self.config.kernel_size[2] + 1)
-        )
+        self.conv1 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
+                               kernel_size=self.config.kernel_size[0])
+        self.conv2 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
+                               kernel_size=self.config.kernel_size[1])
+        self.conv3 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
+                               kernel_size=self.config.kernel_size[2])
 
         self.dropout = nn.Dropout(self.config.dropout_keep)
 
@@ -57,15 +46,24 @@ class CnnSent(nn.Module):
         self.softmax = nn.Softmax()
 
     def forward(self, x):
-        # x.shape = (max_sen_len, batch_size)
-        embedded_sent = self.embeddings(x).permute(1, 2, 0)
-        # embedded_sent.shape = (batch_size=64,embed_size=300,max_sen_len=20)
+        x = x.type(torch.LongTensor).permute(1, 0)
+        embedded_sent = self.embeddings(x)
+        embedded_sent = embedded_sent.permute(1, 2, 0)
 
-        conv_out1 = self.conv1(embedded_sent).squeeze(2)  # shape=(64, num_channels, 1) (squeeze 1)
-        conv_out2 = self.conv2(embedded_sent).squeeze(2)
-        conv_out3 = self.conv3(embedded_sent).squeeze(2)
+        # First convolution
+        conv_out1 = t_func.relu(self.conv1(embedded_sent))
+        kernel_size = self.config.max_sen_len - self.config.kernel_size[0] + 1
+        conv_out1 = t_func.max_pool1d(conv_out1, kernel_size=kernel_size).squeeze()
+        # Second convolution
+        conv_out2 = t_func.relu(self.conv2(embedded_sent))
+        kernel_size = self.config.max_sen_len - self.config.kernel_size[1] + 1
+        conv_out2 = t_func.max_pool1d(conv_out2, kernel_size=kernel_size).squeeze()
+        # Third convolution
+        conv_out3 = t_func.relu(self.conv3(embedded_sent))
+        kernel_size = self.config.max_sen_len - self.config.kernel_size[2] + 1
+        conv_out3 = t_func.max_pool1d(conv_out3, kernel_size=kernel_size).squeeze()
 
         all_out = torch.cat((conv_out1, conv_out2, conv_out3), 1)
         final_feature_map = self.dropout(all_out)
-        final_out = self.fc(final_feature_map)
-        return self.softmax(final_out)
+
+        return t_func.softmax(self.fc(final_feature_map), dim=1)

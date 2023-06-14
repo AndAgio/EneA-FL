@@ -1,8 +1,10 @@
 from .femnist import CnnFemnist
 from .sent140 import CnnSent
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
+from .config_files import SentConfig
 
 import time
+import subprocess
 import numpy as np
 import torch
 import torch.optim as optim
@@ -115,13 +117,15 @@ class WorkerModel:
             labels = torch.from_numpy(np.array(batch_output))
             return inputs, labels
         elif self.dataset == 'sent140':
-            import subprocess
-            rc = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+            try:
+                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+            except FileNotFoundError:
+                rc = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
-            x_batch = [line_to_indices(e, indd, max_words=50) for e in x_batch]
-            inputs = np.array(x_batch)
-            labels = np.array(batch_output)
+            x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
+            inputs = torch.from_numpy(np.array(x_batch))
+            labels = torch.from_numpy(np.array(batch_output))
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))

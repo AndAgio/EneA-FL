@@ -13,11 +13,7 @@ import sys
 
 from PIL import Image
 
-utils_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-utils_dir = os.path.join(utils_dir, 'utils')
-sys.path.append(utils_dir)
-
-import util
+from data.utils import util
 
 MAX_WRITERS = 100  # max number of writers per json file.
 

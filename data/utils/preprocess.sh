@@ -178,7 +178,7 @@ if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
         if [ $SAMPLE = "iid" ]; then
             LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG --iid $IUSERTAG $SFRACTAG --seed ${SEED_ARGUMENT}
         else
-            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $SFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $IUSERTAG $SFRACTAG --seed ${SEED_ARGUMENT}
         fi
 
         cd ../$NAME

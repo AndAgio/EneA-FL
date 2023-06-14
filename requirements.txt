@@ -3,3 +3,4 @@ Pillow==9.5.0
 scikit-learn==1.2.2
 pandas==2.0.2
 config_parser==0.0.1
+matplotlib==3.7.1

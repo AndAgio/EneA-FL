@@ -1,4 +1,6 @@
 import os
+import subprocess
+import shutil
 import numpy as np
 from .server import Server
 from .worker import Worker
@@ -7,12 +9,14 @@ from enea_fl.models import ServerModel, WorkerModel, read_data
 
 
 class Federation:
-    def __init__(self, dataset, n_rounds=100, use_val_set=False):
+    def __init__(self, dataset, n_workers, iid=True, n_rounds=100, use_val_set=False):
         self.dataset = dataset
+        self.n_workers = n_workers
+        self.iid = iid
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
         print('Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
-        self.workers = Federation.setup_workers(dataset, use_val_set)
+        self.workers = Federation.setup_workers(dataset, self.n_workers, self.iid, use_val_set)
         self.server = Federation.create_server(dataset, self.workers)
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         print('Federation initialized with {} workers!'.format(len(self.workers)))
@@ -49,9 +53,9 @@ class Federation:
         print('Model saved in path: %s' % save_path)
 
     @staticmethod
-    def create_workers(users, device_types, energy_policies, train_data, test_data, dataset):
+    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset):
         workers = [Worker(u, device_types[i], energy_policies[i],
-                          train_data[u], test_data[u], WorkerModel(dataset)) for i, u in enumerate(users)]
+                          train_data[u], test_data[u], WorkerModel(dataset)) for i, u in enumerate(workers)]
         return workers
 
     @staticmethod
@@ -60,20 +64,39 @@ class Federation:
         return Server(ServerModel(dataset), possible_workers)
 
     @staticmethod
-    def setup_workers(dataset, use_val_set=False):
-        """Instantiates workers based on given train and test data directories.
-
-        Return:
-            all_workers: list of Client objects.
-        """
+    def setup_workers(dataset, n_workers=100, iid=True, use_val_set=False):
         print('Setting up workers...')
         eval_set = 'test' if not use_val_set else 'val'
-        train_data_dir = os.path.join('data', dataset, 'data', 'train')
-        test_data_dir = os.path.join('data', dataset, 'data', eval_set)
-        users, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
+        try:
+            train_data_dir = os.path.join('data', dataset, 'data', 'train')
+            test_data_dir = os.path.join('data', dataset, 'data', eval_set)
+            workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
+            assert len(workers) == n_workers
+        except (FileNotFoundError, AssertionError) as error:
+            sf = 0.1 if dataset == 'femnist' else 1
+            parent_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+            dataset_dir = os.path.join(parent_path, 'data', dataset)
+            if isinstance(error, AssertionError):
+                shutil.rmtree(os.path.join(dataset_dir, 'data', 'sampled_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', 'rem_user_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', 'train'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', 'test'))
+            _ = subprocess.call("{}/preprocess.sh -s {} "
+                                "--iu {} --sf {} -k 0 -t sample".format(dataset_dir,
+                                                                        'iid' if iid else 'niid',
+                                                                        n_workers,
+                                                                        sf),
+                                cwd=dataset_dir,
+                                shell=True)
+            train_data_dir = os.path.join('data', dataset, 'data', 'train')
+            test_data_dir = os.path.join('data', dataset, 'data', eval_set)
+            workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
+            assert len(workers) == n_workers
         device_types = np.random.choice(['raspberry_0', 'raspberry_2', 'raspberry_3', 'nano', 'xavier'],
-                                        size=len(users), replace=True)
-        energy_policies = np.random.choice(['normal', 'conservative', 'extreme'],
-                                           size=len(users), replace=True)
-        workers = Federation.create_workers(users, device_types, energy_policies, train_data, test_data, dataset)
+                                        size=len(workers), replace=True)
+        # energy_policies = np.random.choice(['normal', 'conservative', 'extreme'],
+        #                                    size=len(workers), replace=True)
+        energy_policies = np.random.choice(['normal'],
+                                           size=len(workers), replace=True)
+        workers = Federation.create_workers(workers, device_types, energy_policies, train_data, test_data, dataset)
         return workers
