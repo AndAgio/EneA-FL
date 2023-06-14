@@ -1,23 +1,30 @@
-import torch
 from torch import nn
 import torch.nn.functional as t_func
+from .config_files import FemnistConfig
 
 
 class CnnFemnist(nn.Module):
-    def __init__(self, n_classes=62):
+    def __init__(self, ):
         super(CnnFemnist, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=20, kernel_size=3, stride=1)
-        self.conv2 = nn.Conv2d(in_channels=20, out_channels=50, kernel_size=3, stride=1)
-        self.fc1 = nn.Linear(in_features=5*5*50, out_features=500)
-        self.fc2 = nn.Linear(in_features=500, out_features=n_classes)
+
+        self.config = FemnistConfig()
+
+        self.conv1 = nn.Conv2d(in_channels=self.config.image_shape[0],
+                               out_channels=self.config.conv_channels[0],
+                               kernel_size=self.config.conv_kernels[0],
+                               stride=self.config.conv_strides[0])
+        self.conv2 = nn.Conv2d(in_channels=self.config.conv_channels[0],
+                               out_channels=self.config.conv_channels[1],
+                               kernel_size=self.config.conv_kernels[1],
+                               stride=self.config.conv_strides[1])
+        self.fc1 = nn.Linear(in_features=self.config.lin_channels[0],
+                             out_features=self.config.lin_channels[1])
+        self.fc2 = nn.Linear(in_features=self.config.lin_channels[1],
+                             out_features=self.config.n_classes)
 
     def forward(self, x):
-        # x = torch.reshape(x, (-1, 1, 28, 28))
-        x = t_func.relu(self.conv1(x))
-        x = t_func.max_pool2d(x, 2, 2)
-        x = t_func.relu(self.conv2(x))
-        x = t_func.max_pool2d(x, 2, 2)
-        x = x.view(-1, 5*5*50)
+        x = t_func.max_pool2d(t_func.relu(self.conv1(x)), 2, 2)
+        x = t_func.max_pool2d(t_func.relu(self.conv2(x)), 2, 2)
+        x = x.view(-1, self.config.lin_channels[0])
         x = t_func.relu(self.fc1(x))
-        x = self.fc2(x)
-        return t_func.softmax(x, dim=1)
+        return t_func.softmax(self.fc2(x), dim=1)
