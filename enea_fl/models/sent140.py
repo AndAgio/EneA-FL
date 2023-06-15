@@ -45,11 +45,11 @@ class CnnSent(nn.Module):
         embedded_sent = self.embeddings(x)
         embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
         # First convolution
-        out1 = t_func.max_pool1d(t_func.relu(self.conv1(embedded_sent)), kernel_size=self.kernel_size1).squeeze()
+        out1 = t_func.max_pool1d(t_func.relu(self.conv1(embedded_sent)), kernel_size=self.kernel_size1).squeeze(2)
         # Second convolution
-        out2 = t_func.max_pool1d(t_func.relu(self.conv2(embedded_sent)), kernel_size=self.kernel_size3).squeeze()
+        out2 = t_func.max_pool1d(t_func.relu(self.conv2(embedded_sent)), kernel_size=self.kernel_size3).squeeze(2)
         # Third convolution
-        out3 = t_func.max_pool1d(t_func.relu(self.conv3(embedded_sent)), kernel_size=self.kernel_size3).squeeze()
+        out3 = t_func.max_pool1d(t_func.relu(self.conv3(embedded_sent)), kernel_size=self.kernel_size3).squeeze(2)
         # Aggregate convolutions
         all_out = torch.cat((out1, out2, out3), 1)
         # Fully connected and output
