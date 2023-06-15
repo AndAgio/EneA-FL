@@ -16,7 +16,7 @@ from scipy.special import softmax
 
 from collections import OrderedDict
 
-from constants import DATASETS, SEED_FILES
+from constants import DATASETS, SEED_FILES, SAMPLE_MODES
 
 parser = argparse.ArgumentParser()
 
@@ -25,12 +25,11 @@ parser.add_argument('--name',
                     type=str,
                     choices=DATASETS,
                     default='sent140')
-parser.add_argument('--iid',
-                    help='sample iid;',
-                    action="store_true")
-parser.add_argument('--niid',
-                    help="sample niid;",
-                    dest='iid', action='store_false')
+parser.add_argument('--sampling_mode',
+                    help='define how samples are distributed amongst workers; default: iid+sim;',
+                    type=str,
+                    choices=SAMPLE_MODES,
+                    default='iid+sim')
 parser.add_argument('--fraction',
                     help='fraction of all data to sample; default: 0.1;',
                     type=float,
@@ -87,8 +86,13 @@ def niid_sample(all_x_samples, all_y_samples, samples_to_take, labels_distributi
     sampled_x, sampled_y = [all_x_samples[i] for i in indices.tolist()], [all_y_samples[i] for i in indices.tolist()]
     return sampled_x, sampled_y
 
-
+# Read options from args
 n_workers = args.u
+labels_dist = args.sampling_mode.split('+')[0]
+assert labels_dist in ['iid', 'niid']
+n_samples_dist = args.sampling_mode.split('+')[1]
+assert n_samples_dist in ['sim', 'nsim']
+
 tot_n_samples = 0
 list_of_classes = []
 for f in files:
@@ -102,17 +106,26 @@ for f in files:
     list_of_classes += list(set(y_list))
     list_of_classes = list(set(list_of_classes))
 n_classes = len(list_of_classes)
-avg_samples_per_worker = tot_n_samples / n_workers
-if avg_samples_per_worker > args.spw:
-    avg_samples_per_worker = args.spw
-    samples_per_worker = (np.minimum(avg_samples_per_worker * (1 + np.random.normal(0, 0.1, n_workers)),
-                                     np.asarray([args.spw for _ in range(n_workers)]))).tolist()
+if n_samples_dist == 'sim':
+    avg_samples_per_worker = tot_n_samples / n_workers
+    if avg_samples_per_worker > args.spw:
+        avg_samples_per_worker = args.spw
+        samples_per_worker = (np.minimum(avg_samples_per_worker * (1 + np.random.normal(0, 0.1, n_workers)),
+                                         np.asarray([args.spw for _ in range(n_workers)]))).tolist()
+    else:
+        samples_per_worker = (avg_samples_per_worker*(1+np.random.normal(0, 0.1, n_workers))).tolist()
 else:
-    samples_per_worker = (avg_samples_per_worker*(1+np.random.normal(0, 0.1, n_workers))).tolist()
+    avg_samples_per_worker = tot_n_samples / n_workers
+    if avg_samples_per_worker > args.spw:
+        size = args.spw * 2
+    else:
+        size = avg_samples_per_worker * 2
+    samples_per_worker = np.random.uniform(0.1*size, size, n_workers).tolist()
 samples_per_worker = [round(sample) for sample in samples_per_worker]
+print('samples_per_worker: {}'.format(samples_per_worker))
 
 workers = [str(i) for i in range(n_workers)]
-if not args.iid:
+if labels_dist == 'niid':
     workers_labels_distributions = {w: softmax(np.random.random_integers(0, 100, n_classes)) for w in workers}
 else:
     workers_labels_distributions = {w: 1./n_workers for w in workers}
@@ -140,7 +153,7 @@ for f in files:
         y_list = [item for sublist in raw_y for item in sublist]  # flatten raw_y
         all_x_samples = [x_list[i] for i in new_indices]
         all_y_samples = [y_list[i] for i in new_indices]
-        if args.iid:
+        if labels_dist == 'iid':
             sampled_x, sampled_y = iid_sample(all_x_samples, all_y_samples, samples_to_take)
         else:
             sampled_x, sampled_y = niid_sample(all_x_samples, all_y_samples,
@@ -150,11 +163,7 @@ for f in files:
         all_data['user_data'][worker]['x'] += sampled_x
         all_data['user_data'][worker]['y'] += sampled_y
 
-slabel = ''
-if (args.iid):
-    slabel = 'iid'
-else:
-    slabel = 'niid'
+slabel = args.sampling_mode
 
 arg_frac = str(args.fraction)
 arg_frac = arg_frac[2:]
@@ -164,7 +173,7 @@ arg_label = arg_frac
 if (args.iid):
     arg_label = '%s_%s' % (arg_nu, arg_label)
 file_name = '%s_%s_%s.json' % ((f[:-5]), slabel, arg_label)
-ouf_dir = os.path.join(data_dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'sampled_data', file_name)
+ouf_dir = os.path.join(data_dir, '{}_workers'.format(n_workers), 'spw={}'.format(args.spw), 'mode={}'.format(args.sampling_mode), 'sampled_data', file_name)
 
 print('writing %s' % file_name)
 with open(ouf_dir, 'w') as outfile:

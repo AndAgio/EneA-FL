@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import numpy as np
+import math
 from .server import Server
 from .worker import Worker
 from .utils import get_stat_writer_function, get_sys_writer_function, print_stats
@@ -9,15 +10,15 @@ from enea_fl.models import ServerModel, WorkerModel, read_data
 
 
 class Federation:
-    def __init__(self, dataset, n_workers, max_spw=10000, iid=True, n_rounds=100, use_val_set=False):
+    def __init__(self, dataset, n_workers, max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False):
         self.dataset = dataset
         self.n_workers = n_workers
         self.max_spw = max_spw
-        self.iid = iid
+        self.sampling_mode = sampling_mode
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
         print('Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
-        self.workers = Federation.setup_workers(dataset, self.n_workers, self.max_spw, self.iid, use_val_set)
+        self.workers = Federation.setup_workers(dataset, self.n_workers, self.max_spw, self.sampling_mode, use_val_set)
         self.server = Federation.create_server(dataset, self.workers)
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         print('Federation initialized with {} workers!'.format(len(self.workers)))
@@ -65,12 +66,13 @@ class Federation:
         return Server(ServerModel(dataset), possible_workers)
 
     @staticmethod
-    def setup_workers(dataset, n_workers=100, max_spw=10000, iid=True, use_val_set=False):
+    def setup_workers(dataset, n_workers=100, max_spw=math.inf, sampling_mode='iid+sim', use_val_set=False):
         print('Setting up workers...')
         eval_set = 'test' if not use_val_set else 'val'
         try:
             workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
                                                                            n_workers=n_workers,
+                                                                           sampling_mode=sampling_mode,
                                                                            max_spw=max_spw,
                                                                            eval_set=eval_set)
         except (FileNotFoundError, AssertionError) as error:
@@ -79,14 +81,17 @@ class Federation:
             dataset_dir = os.path.join(parent_path, 'data', dataset)
             if isinstance(error, AssertionError):
                 shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           '{}_spw'.format(max_spw), 'sampled_data'))
+                                           'spw={}'.format(max_spw),
+                                           'mode={}'.format(sampling_mode), 'sampled_data'))
                 shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           '{}_spw'.format(max_spw), 'train'))
+                                           'spw={}'.format(max_spw),
+                                           'mode={}'.format(sampling_mode), 'train'))
                 shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           '{}_spw'.format(max_spw), 'test'))
+                                           'spw={}'.format(max_spw),
+                                           'mode={}'.format(sampling_mode), 'test'))
             _ = subprocess.call("{}/preprocess.sh -s {} "
                                 "--iu {} --spw {} --sf {}".format(dataset_dir,
-                                                                  'iid' if iid else 'niid',
+                                                                  sampling_mode,
                                                                   n_workers,
                                                                   max_spw,
                                                                   sf),
@@ -94,6 +99,7 @@ class Federation:
                                 shell=True)
             workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
                                                                            n_workers=n_workers,
+                                                                           sampling_mode=sampling_mode,
                                                                            max_spw=max_spw,
                                                                            eval_set=eval_set)
         device_types = np.random.choice(['raspberry_0', 'raspberry_2', 'raspberry_3', 'nano', 'xavier'],
@@ -106,11 +112,13 @@ class Federation:
         return workers
 
     @staticmethod
-    def read_data_from_dir(dataset, n_workers=100, max_spw=10000, eval_set='test'):
+    def read_data_from_dir(dataset, n_workers=100, max_spw=math.inf, sampling_mode='iid+sim', eval_set='test'):
         train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers),
-                                      '{}_spw'.format(max_spw), 'train')
+                                      'spw={}'.format(max_spw),
+                                      'mode={}'.format(sampling_mode), 'train')
         test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers),
-                                     '{}_spw'.format(max_spw), eval_set)
+                                     'spw={}'.format(max_spw),
+                                     'mode={}'.format(sampling_mode), eval_set)
         workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
         assert len(workers) == n_workers
         return workers, train_data, test_data

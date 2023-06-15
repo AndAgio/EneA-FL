@@ -6,7 +6,7 @@
 # parse arguments
 
 NAME="sent140" # name of the dataset, equivalent to directory name
-SAMPLE="na" # -s tag, iid or niid
+SAMPLEMODE="" # -s tag, iid or niid
 IUSER="" # --iu tag, # of users if iid sampling
 SPW="" # maximum number of sample per user
 SFRAC="" # --sf tag, fraction of data to sample
@@ -26,17 +26,17 @@ case $key in
     --name)
     NAME="$2"
     shift # past argument
-    if [ ${SAMPLE:0:1} = "-" ]; then
+    if [ ${NAME:0:1} = "-" ]; then
         NAME="sent140"
     else
         shift # past value
     fi
     ;;
     -s)
-    SAMPLE="$2"
+    SAMPLEMODE="$2"
     shift # past argument
-    if [ ${SAMPLE:0:1} = "-" ]; then
-        SAMPLE=""
+    if [ ${SAMPLEMODE:0:1} = "-" ]; then
+        SAMPLEMODE=""
     else
         shift # past value
     fi
@@ -141,6 +141,10 @@ IUSERTAG=""
 if [ ! -z $IUSER ]; then
     IUSERTAG="--u $IUSER"
 fi
+SAMPLEMODETAG=""
+if [ ! -z $SAMPLEMODE ]; then
+  SAMPLEMODETAG="--sampling_mode $SAMPLEMODE"
+fi
 NUSERTAG=""
 if [ ! -z $IUSER ]; then
     NUSERTAG="--n_workers $IUSER"
@@ -154,21 +158,23 @@ if [ ! -z $SFRAC ]; then
     SFRACTAG="--fraction $SFRAC"
 fi
 
-echo data/"${IUSER}"_workers
 if [ ! -d "data/${IUSER}_workers" ]; then
     mkdir data/"${IUSER}"_workers
 fi
-if [ ! -d "data/${IUSER}_workers/${SPW}_spw" ]; then
-    mkdir data/"${IUSER}"_workers/"${SPW}"_spw/
+if [ ! -d "data/${IUSER}_workers/spw=${SPW}" ]; then
+    mkdir data/"${IUSER}"_workers/spw=${SPW}
+fi
+if [ ! -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}" ]; then
+    mkdir data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}
 fi
 
 
-if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
-    if [ -d "data/${IUSER}_workers/${SPW}_spw/sampled_data" ] && [ "$(ls -A data/"${IUSER}"_workers/"${SPW}"_spw/sampled_data)" ]; then
+if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLEMODE = "na" ]; then
+    if [ -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}/sampled_data" ] && [ "$(ls -A data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}/sampled_data)" ]; then
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/sampled_data" ]; then
-            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/sampled_data
+        if [ ! -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}/sampled_data" ]; then
+            mkdir data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}/sampled_data
         fi
 
         cd ../utils
@@ -176,18 +182,12 @@ if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
         # Defaults to -1 if not specified, causes script to randomly generate seed
         SEED_ARGUMENT="${SAMPLING_SEED:--1}" 
 
-        if [ $SAMPLE = "iid" ]; then
-          echo python3 sample.py $NAMETAG --iid $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
-            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG --iid $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
-        else
-            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
-        fi
+        LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $SAMPLEMODETAG $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
 
         cd ../$NAME
     fi
 fi
 
-echo Outside if after sample
 
 # create train-test split
 TFRACTAG=""
@@ -196,17 +196,14 @@ if [ ! -z $TFRAC ]; then
 fi
 
 if [ "$CONT_SCRIPT" = true ]; then
-  echo Inside if with train
-    if [ -d "data/${IUSER}_workers/${SPW}_spw/train" ] && [ "$(ls -A data/"${IUSER}"_workers/"${SPW}"_spw/train)" ]; then
-      echo Inside if with ls -A
+    if [ -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}/train" ] && [ "$(ls -A data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}/train)" ]; then
         CONT_SCRIPT=false
     else
-      echo Inside else
-        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/train" ]; then
-            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/train
+        if [ ! -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}/train" ]; then
+            mkdir data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}/train
         fi
-        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/test" ]; then
-            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/test
+        if [ ! -d "data/${IUSER}_workers/spw=${SPW}/mode=${SAMPLEMODE}/test" ]; then
+            mkdir data/"${IUSER}"_workers/spw=${SPW}/mode=${SAMPLEMODE}/test
         fi
 
         cd ../utils
@@ -214,8 +211,7 @@ if [ "$CONT_SCRIPT" = true ]; then
         # Defaults to -1 if not specified, causes script to randomly generate seed
         SEED_ARGUMENT="${SPLIT_SEED:--1}"
 
-      echo reached python split with arguments $NAMETAG $NUSERTAG $SAMPPERWORKER $TFRACTAG --seed ${SEED_ARGUMENT}
-        LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $NUSERTAG $SAMPPERWORKER $TFRACTAG --seed ${SEED_ARGUMENT}
+        LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $NUSERTAG $SAMPLEMODETAG $SAMPPERWORKER $TFRACTAG --seed ${SEED_ARGUMENT}
 
         cd ../$NAME
     fi

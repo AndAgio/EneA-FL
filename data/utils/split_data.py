@@ -11,7 +11,8 @@ import sys
 
 from collections import OrderedDict
 
-from constants import DATASETS, SEED_FILES
+from constants import DATASETS, SEED_FILES, SAMPLE_MODES
+
 
 def create_jsons_for(user_files, which_set, max_users, include_hierarchy):
     """used in split-by-user case"""
@@ -49,7 +50,7 @@ def create_jsons_for(user_files, which_set, max_users, include_hierarchy):
         param_to_end = '.json'
         if param_i != -1:
             param_to_end = num_to_end[param_i:]
-        nf = '%s_%d%s' % (f[:(num_i-1)], json_index, param_to_end)
+        nf = '%s_%d%s' % (f[:(num_i - 1)], json_index, param_to_end)
         file_name = '%s_%s_%s.json' % ((nf[:-5]), which_set, arg_label)
         ouf_dir = os.path.join(dir, which_set, file_name)
 
@@ -63,29 +64,35 @@ def create_jsons_for(user_files, which_set, max_users, include_hierarchy):
         num_samples = []
         user_data = {}
 
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--name',
-                help='name of dataset to parse; default: sent140;',
-                type=str,
-                choices=DATASETS,
-                default='sent140')
+                    help='name of dataset to parse; default: sent140;',
+                    type=str,
+                    choices=DATASETS,
+                    default='sent140')
 parser.add_argument('--n_workers',
-                help='number of workers selected for the federation;',
-                type=int,
-                default=100)
+                    help='number of workers selected for the federation;',
+                    type=int,
+                    default=100)
+parser.add_argument('--sampling_mode',
+                    help='define how samples are distributed amongst workers; default: iid+sim;',
+                    type=str,
+                    choices=SAMPLE_MODES,
+                    default='iid+sim')
 parser.add_argument('--spw',
                     help='maximum number of samples for each worker;',
                     type=int,
                     default=10000)
 parser.add_argument('--frac',
-                help='fraction in training set; default: 0.9;',
-                type=float,
-                default=0.9)
+                    help='fraction in training set; default: 0.9;',
+                    type=float,
+                    default=0.9)
 parser.add_argument('--seed',
-                help='seed for random partitioning of test/train data',
-                type=int,
-                default=None)
+                    help='seed for random partitioning of test/train data',
+                    type=int,
+                    default=None)
 
 parser.set_defaults(user=False)
 
@@ -98,7 +105,10 @@ n_workers = args.n_workers
 
 parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 dir = os.path.join(parent_path, args.name, 'data')
-subdir = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'sampled_data')
+subdir = os.path.join(dir, '{}_workers'.format(n_workers),
+                      'spw={}'.format(args.spw),
+                      'mode={}'.format(args.sampling_mode),
+                      'sampled_data')
 files = []
 if os.path.exists(subdir):
     files = os.listdir(subdir)
@@ -115,9 +125,9 @@ if os.environ.get('LEAF_DATA_META_DIR') is not None:
         f.write("# split_seed used by sampling script - supply as "
                 "--spltseed to preprocess.sh or --seed to utils/split_data.py\n")
         f.write(str(rng_seed))
-    print ("- random seed written out to {file}".format(file=seed_fname))
+    print("- random seed written out to {file}".format(file=seed_fname))
 else:
-    print ("- using random seed '{seed}' for sampling".format(seed=rng_seed))
+    print("- using random seed '{seed}' for sampling".format(seed=rng_seed))
 
 arg_label = str(args.frac)
 arg_label = arg_label[2:]
@@ -142,7 +152,7 @@ for f in files:
     num_samples_test = []
     user_data_test = {}
 
-    user_indices = [] # indices of users in data['users'] that are not deleted
+    user_indices = []  # indices of users in data['users'] that are not deleted
 
     removed = 0
     for i, u in enumerate(data['users']):
@@ -200,8 +210,12 @@ for f in files:
     all_data_test['user_data'] = user_data_test
     file_name_train = '%s_train_%s.json' % ((f[:-5]), arg_label)
     file_name_test = '%s_test_%s.json' % ((f[:-5]), arg_label)
-    ouf_dir_train = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'train', file_name_train)
-    ouf_dir_test = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'test', file_name_test)
+    ouf_dir_train = os.path.join(dir, '{}_workers'.format(n_workers),
+                                 'spw={}'.format(args.spw),
+                                 'mode={}'.format(args.sampling_mode), 'train', file_name_train)
+    ouf_dir_test = os.path.join(dir, '{}_workers'.format(n_workers),
+                                'spw={}'.format(args.spw),
+                                'mode={}'.format(args.sampling_mode), 'test', file_name_test)
     print('writing %s' % file_name_train)
     with open(ouf_dir_train, 'w') as outfile:
         json.dump(all_data_train, outfile)
