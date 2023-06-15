@@ -98,12 +98,12 @@ class WorkerModel:
                 running_loss += self.criterion(output, batch_label).item()
                 preds_softmax = torch.nn.functional.softmax(output, dim=1)
                 pred_labels = torch.argmax(preds_softmax, dim=1)
-                predictions += pred_labels.numpy().tolist()
-                labels_list += batch_label.numpy().tolist()
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
                 counter += 1
             # Compute accuracy
-            f1 = f1_score(np.asarray(labels_list), pred_labels.numpy(), average='weighted')
-            accuracy = accuracy_score(np.asarray(labels_list), pred_labels.numpy())
+            f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
+            accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
         return {
             'loss': running_loss / counter,
             'accuracy': accuracy,
@@ -120,7 +120,7 @@ class WorkerModel:
             try:
                 _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             except FileNotFoundError:
-                rc = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+                _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
                 _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
             x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
@@ -146,11 +146,6 @@ class ServerModel:
         return self.model
 
     def send_to(self, workers):
-        """Copies server model variables to each of the given workers
-
-        Args:
-            workers: list of Worker objects
-        """
         for w in workers:
             w.set_weights(np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
                                    dtype=object))

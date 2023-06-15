@@ -68,8 +68,8 @@ class Federation:
         print('Setting up workers...')
         eval_set = 'test' if not use_val_set else 'val'
         try:
-            train_data_dir = os.path.join('data', dataset, 'data', 'train')
-            test_data_dir = os.path.join('data', dataset, 'data', eval_set)
+            train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), 'train')
+            test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), eval_set)
             workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
             assert len(workers) == n_workers
         except (FileNotFoundError, AssertionError) as error:
@@ -77,10 +77,10 @@ class Federation:
             parent_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
             dataset_dir = os.path.join(parent_path, 'data', dataset)
             if isinstance(error, AssertionError):
-                shutil.rmtree(os.path.join(dataset_dir, 'data', 'sampled_data'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', 'rem_user_data'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', 'train'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', 'test'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'sampled_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'rem_user_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'train'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'test'))
             _ = subprocess.call("{}/preprocess.sh -s {} "
                                 "--iu {} --sf {} -k 0 -t sample".format(dataset_dir,
                                                                         'iid' if iid else 'niid',
@@ -88,8 +88,8 @@ class Federation:
                                                                         sf),
                                 cwd=dataset_dir,
                                 shell=True)
-            train_data_dir = os.path.join('data', dataset, 'data', 'train')
-            test_data_dir = os.path.join('data', dataset, 'data', eval_set)
+            train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), 'train')
+            test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), eval_set)
             workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
             assert len(workers) == n_workers
         device_types = np.random.choice(['raspberry_0', 'raspberry_2', 'raspberry_3', 'nano', 'xavier'],
