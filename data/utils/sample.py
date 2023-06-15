@@ -117,7 +117,7 @@ if n_samples_dist == 'sim':
 else:
     avg_samples_per_worker = tot_n_samples / n_workers
     if avg_samples_per_worker > args.spw:
-        size = args.spw * 2
+        size = args.spw
     else:
         size = avg_samples_per_worker * 2
     samples_per_worker = np.random.uniform(0.1*size, size, n_workers).tolist()
