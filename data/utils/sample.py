@@ -36,9 +36,13 @@ parser.add_argument('--fraction',
                     type=float,
                     default=0.1)
 parser.add_argument('--u',
-                    help=('number of workers to consider;'),
+                    help='number of workers to consider;',
                     type=int,
                     default=100)
+parser.add_argument('--spw',
+                    help='maximum number of samples for each worker;',
+                    type=int,
+                    default=10000)
 parser.add_argument('--seed',
                     help='seed for random sampling of data',
                     type=int,
@@ -99,12 +103,19 @@ for f in files:
     list_of_classes = list(set(list_of_classes))
 n_classes = len(list_of_classes)
 avg_samples_per_worker = tot_n_samples / n_workers
-samples_per_worker = (avg_samples_per_worker*(1+np.random.normal(0, 0.1, n_workers))).tolist()
+if avg_samples_per_worker > args.spw:
+    avg_samples_per_worker = args.spw
+    samples_per_worker = (np.minimum(avg_samples_per_worker * (1 + np.random.normal(0, 0.1, n_workers)),
+                                     np.asarray([args.spw for _ in range(n_workers)]))).tolist()
+else:
+    samples_per_worker = (avg_samples_per_worker*(1+np.random.normal(0, 0.1, n_workers))).tolist()
 samples_per_worker = [round(sample) for sample in samples_per_worker]
 
 workers = [str(i) for i in range(n_workers)]
 if not args.iid:
     workers_labels_distributions = {w: softmax(np.random.random_integers(0, 100, n_classes)) for w in workers}
+else:
+    workers_labels_distributions = {w: 1./n_workers for w in workers}
 all_data = {}
 all_data['users'] = workers
 all_data['num_samples'] = [0 for i in range(n_workers)]
@@ -153,7 +164,7 @@ arg_label = arg_frac
 if (args.iid):
     arg_label = '%s_%s' % (arg_nu, arg_label)
 file_name = '%s_%s_%s.json' % ((f[:-5]), slabel, arg_label)
-ouf_dir = os.path.join(data_dir, '{}_workers'.format(n_workers), 'sampled_data', file_name)
+ouf_dir = os.path.join(data_dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'sampled_data', file_name)
 
 print('writing %s' % file_name)
 with open(ouf_dir, 'w') as outfile:

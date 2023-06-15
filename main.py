@@ -10,6 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
     parser.add_argument('--num_workers', help='number of rounds to simulate;', type=int, default=100)
+    parser.add_argument('--max_spw', help='maximum number of samples for each worker;', type=int, default=10000)
     parser.add_argument('--iid', help='true to federate dataset with iid', type=str, default='true')
     parser.add_argument('--num_rounds', help='number of rounds to simulate;', type=int, default=100)
     parser.add_argument('--eval_every', help='evaluate every ____ rounds;', type=int, default=1)
@@ -31,6 +32,7 @@ def main():
 
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
+                               max_spw=args.max_spw,
                                iid=True if args.iid.lower() in ['true', 't'] else False,
                                n_rounds=args.num_rounds,
                                use_val_set=args.use_val_set)

@@ -8,17 +8,14 @@
 NAME="sent140" # name of the dataset, equivalent to directory name
 SAMPLE="na" # -s tag, iid or niid
 IUSER="" # --iu tag, # of users if iid sampling
+SPW="" # maximum number of sample per user
 SFRAC="" # --sf tag, fraction of data to sample
-MINSAMPLES="na" # -k tag, minimum allowable # of samples per user
-TRAIN="na" # -t tag, user or sample
 TFRAC="" # --tf tag, fraction of data in training set
 SAMPLING_SEED="" # --smplseed, seed specified for sampling of data
 SPLIT_SEED="" # --spltseed, seed specified for train/test data split
-NO_CHECKSUM="" # --nochecksum, disable creation of MD5 checksum file after data gen
 VERIFICATION_FILE="" # --verify <fname>, check if JSON files' MD5 matches given digest
 
 META_DIR='meta'
-CHECKSUM_FNAME="${META_DIR}/dir-checksum.md5"
 
 while [[ $# -gt 0 ]]
 do
@@ -53,29 +50,20 @@ case $key in
         shift # past value
     fi
     ;;
+    --spw)
+    SPW="$2"
+    shift # past argument
+    if [ ${SPW:0:1} = "-" ]; then
+        SPW=""
+    else
+        shift # past value
+    fi
+    ;;
     --sf)
     SFRAC="$2"
     shift # past argument
     if [ ${SFRAC:0:1} = "-" ]; then
         SFRAC=""
-    else
-        shift # past value
-    fi
-    ;;
-    -k)
-    MINSAMPLES="$2"
-    shift # past argument
-    if [ ${MINSAMPLES:0:1} = "-" ]; then
-        MINSAMPLES=""
-    else
-        shift # past value
-    fi
-    ;;
-    -t)
-    TRAIN="$2"
-    shift # past argument
-    if [ -z "$TRAIN" ] || [ ${TRAIN:0:1} = "-" ]; then
-        TRAIN=""
     else
         shift # past value
     fi
@@ -95,10 +83,6 @@ case $key in
     ;;
     --spltseed)
     SPLIT_SEED="$2"
-    shift # past argument
-    ;;
-    --nochecksum)
-    NO_CHECKSUM="true"
     shift # past argument
     ;;
     --verify)
@@ -161,21 +145,30 @@ NUSERTAG=""
 if [ ! -z $IUSER ]; then
     NUSERTAG="--n_workers $IUSER"
 fi
+SAMPPERWORKER=""
+if [ ! -z $SPW ]; then
+    SAMPPERWORKER="--spw $SPW"
+fi
 SFRACTAG=""
 if [ ! -z $SFRAC ]; then
     SFRACTAG="--fraction $SFRAC"
 fi
 
+echo data/"${IUSER}"_workers
 if [ ! -d "data/${IUSER}_workers" ]; then
     mkdir data/"${IUSER}"_workers
 fi
+if [ ! -d "data/${IUSER}_workers/${SPW}_spw" ]; then
+    mkdir data/"${IUSER}"_workers/"${SPW}"_spw/
+fi
+
 
 if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
-    if [ -d "data/${IUSER}_workers/sampled_data" ] && [ "$(ls -A data/"${IUSER}"_workers/sampled_data)" ]; then
+    if [ -d "data/${IUSER}_workers/${SPW}_spw/sampled_data" ] && [ "$(ls -A data/"${IUSER}"_workers/"${SPW}"_spw/sampled_data)" ]; then
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/${IUSER}_workers/sampled_data" ]; then
-            mkdir data/"${IUSER}"_workers/sampled_data
+        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/sampled_data" ]; then
+            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/sampled_data
         fi
 
         cd ../utils
@@ -184,35 +177,17 @@ if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
         SEED_ARGUMENT="${SAMPLING_SEED:--1}" 
 
         if [ $SAMPLE = "iid" ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG --iid $IUSERTAG $SFRACTAG --seed ${SEED_ARGUMENT}
+          echo python3 sample.py $NAMETAG --iid $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG --iid $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
         else
-            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $IUSERTAG $SFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 sample.py $NAMETAG $IUSERTAG $SAMPPERWORKER $SFRACTAG --seed ${SEED_ARGUMENT}
         fi
 
         cd ../$NAME
     fi
 fi
 
-# remove users with less then given number of samples
-if [ "$CONT_SCRIPT" = true ] && [ ! $MINSAMPLES = "na" ]; then
-    if [ -d "data/${IUSER}_workers/rem_user_data" ] && [ "$(ls -A data/"${IUSER}"_workers/rem_user_data)" ]; then
-        CONT_SCRIPT=false
-    else
-        if [ ! -d "data/${IUSER}_workers/rem_user_data" ]; then
-            mkdir data/"${IUSER}"_workers/rem_user_data
-        fi
-
-        cd ../utils
-
-        if [ -z $MINSAMPLES ]; then
-            python3 remove_users.py $NAMETAG $NUSERTAG
-        else
-            python3 remove_users.py $NAMETAG $NUSERTAG --min_samples $MINSAMPLES
-        fi
-
-        cd ../$NAME
-    fi
-fi
+echo Outside if after sample
 
 # create train-test split
 TFRACTAG=""
@@ -220,15 +195,18 @@ if [ ! -z $TFRAC ]; then
     TFRACTAG="--frac $TFRAC"
 fi
 
-if [ "$CONT_SCRIPT" = true ] && [ ! $TRAIN = "na" ]; then
-    if [ -d "data/${IUSER}_workers/train" ] && [ "$(ls -A data/"${IUSER}"_workers/train)" ]; then
+if [ "$CONT_SCRIPT" = true ]; then
+  echo Inside if with train
+    if [ -d "data/${IUSER}_workers/${SPW}_spw/train" ] && [ "$(ls -A data/"${IUSER}"_workers/"${SPW}"_spw/train)" ]; then
+      echo Inside if with ls -A
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/${IUSER}_workers/train" ]; then
-            mkdir data/"${IUSER}"_workers/train
+      echo Inside else
+        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/train" ]; then
+            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/train
         fi
-        if [ ! -d "data/${IUSER}_workers/test" ]; then
-            mkdir data/"${IUSER}"_workers/test
+        if [ ! -d "data/${IUSER}_workers/${SPW}_spw/test" ]; then
+            mkdir data/"${IUSER}"_workers/"${SPW}"_spw/test
         fi
 
         cd ../utils
@@ -236,24 +214,12 @@ if [ "$CONT_SCRIPT" = true ] && [ ! $TRAIN = "na" ]; then
         # Defaults to -1 if not specified, causes script to randomly generate seed
         SEED_ARGUMENT="${SPLIT_SEED:--1}"
 
-        if [ -z $TRAIN ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
-        elif [ $TRAIN = "user" ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_user $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
-        elif [ $TRAIN = "sample" ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_sample $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
-        fi
+      echo reached python split with arguments $NAMETAG $NUSERTAG $SAMPPERWORKER $TFRACTAG --seed ${SEED_ARGUMENT}
+        LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $NUSERTAG $SAMPPERWORKER $TFRACTAG --seed ${SEED_ARGUMENT}
 
         cd ../$NAME
     fi
 fi
-
-#if [ -z "${NO_CHECKSUM}" ]; then
-#    echo '------------------------------'
-#    echo "calculating JSON file checksums"
-#    find 'data/' -type f -name '*.json' -exec md5sum {} + | sort -k 2 > ${CHECKSUM_FNAME}
-#    echo "checksums written to ${CHECKSUM_FNAME}"
-#fi
 
 if [ "$CONT_SCRIPT" = false ]; then
     echo "Data for one of the specified preprocessing tasks has already been"

@@ -70,16 +70,14 @@ parser.add_argument('--name',
                 type=str,
                 choices=DATASETS,
                 default='sent140')
-parser.add_argument('--by_user',
-                help='divide users into training and test set groups;',
-                dest='user', action='store_true')
-parser.add_argument('--by_sample',
-                help="divide each user's samples into training and test set groups;",
-                dest='user', action='store_false')
 parser.add_argument('--n_workers',
                 help='number of workers selected for the federation;',
                 type=int,
                 default=100)
+parser.add_argument('--spw',
+                    help='maximum number of samples for each worker;',
+                    type=int,
+                    default=10000)
 parser.add_argument('--frac',
                 help='fraction in training set; default: 0.9;',
                 type=float,
@@ -100,14 +98,10 @@ n_workers = args.n_workers
 
 parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 dir = os.path.join(parent_path, args.name, 'data')
-subdir = os.path.join(dir, '{}_workers'.format(n_workers), 'rem_user_data')
+subdir = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'sampled_data')
 files = []
 if os.path.exists(subdir):
     files = os.listdir(subdir)
-if len(files) == 0:
-    subdir = os.path.join(dir, '{}_workers'.format(n_workers), 'sampled_data')
-    if os.path.exists(subdir):
-        files = os.listdir(subdir)
 if len(files) == 0:
     subdir = os.path.join(dir, 'all_data')
     files = os.listdir(subdir)
@@ -134,121 +128,83 @@ with open(file_dir, 'r') as inf:
     data = json.load(inf)
 include_hierarchy = 'hierarchies' in data
 
-if (args.user):
-    print('splitting data by user')
+print('splitting data by sample')
 
-    # 1 pass through all the json files to instantiate arr
-    # containing all possible (user, .json file name) tuples
-    user_files = []
-    for f in files:
-        file_dir = os.path.join(subdir, f)
-        with open(file_dir, 'r') as inf:
-            # Load data into an OrderedDict, to prevent ordering changes
-            # and enable reproducibility
-            data = json.load(inf, object_pairs_hook=OrderedDict)
-            user_files.extend([(u, ns, f) for (u, ns) in
-                zip(data['users'], data['num_samples'])])
+for f in files:
+    file_dir = os.path.join(subdir, f)
+    with open(file_dir, 'r') as inf:
+        # Load data into an OrderedDict, to prevent ordering changes
+        # and enable reproducibility
+        data = json.load(inf, object_pairs_hook=OrderedDict)
 
-    # randomly sample from user_files to pick training set users
-    num_users = len(user_files)
-    num_train_users = int(args.frac * num_users)
-    indices = [i for i in range(num_users)]
-    train_indices = rng.sample(indices, num_train_users)
-    train_blist = [False for i in range(num_users)]
-    for i in train_indices:
-        train_blist[i] = True
-    train_user_files = []
-    test_user_files = []
-    for i in range(num_users):
-        if (train_blist[i]):
-            train_user_files.append(user_files[i])
-        else:
-            test_user_files.append(user_files[i])
+    num_samples_train = []
+    user_data_train = {}
+    num_samples_test = []
+    user_data_test = {}
 
-    max_users = sys.maxsize
-    if args.name == 'femnist':
-        max_users = 50 # max number of users per json file
-    create_jsons_for(train_user_files, 'train', max_users, include_hierarchy)
-    create_jsons_for(test_user_files, 'test', max_users, include_hierarchy)
+    user_indices = [] # indices of users in data['users'] that are not deleted
 
-else:
-    print('splitting data by sample')
+    removed = 0
+    for i, u in enumerate(data['users']):
 
-    for f in files:
-        file_dir = os.path.join(subdir, f)
-        with open(file_dir, 'r') as inf:
-            # Load data into an OrderedDict, to prevent ordering changes
-            # and enable reproducibility
-            data = json.load(inf, object_pairs_hook=OrderedDict)
+        curr_num_samples = len(data['user_data'][u]['y'])
+        if curr_num_samples >= 2:
+            # ensures number of train and test samples both >= 1
+            num_train_samples = max(1, int(args.frac * curr_num_samples))
+            if curr_num_samples == 2:
+                num_train_samples = 1
 
-        num_samples_train = []
-        user_data_train = {}
-        num_samples_test = []
-        user_data_test = {}
+            num_test_samples = curr_num_samples - num_train_samples
 
-        user_indices = [] # indices of users in data['users'] that are not deleted
+            indices = [j for j in range(curr_num_samples)]
+            if args.name in ['shakespeare']:
+                train_indices = [i for i in range(num_train_samples)]
+                test_indices = [i for i in range(num_train_samples + 80 - 1, curr_num_samples)]
+            else:
+                train_indices = rng.sample(indices, num_train_samples)
+                test_indices = [i for i in range(curr_num_samples) if i not in train_indices]
 
-        removed = 0
-        for i, u in enumerate(data['users']):
+            if len(train_indices) >= 1 and len(test_indices) >= 1:
+                user_indices.append(i)
+                num_samples_train.append(num_train_samples)
+                num_samples_test.append(num_test_samples)
+                user_data_train[u] = {'x': [], 'y': []}
+                user_data_test[u] = {'x': [], 'y': []}
 
-            curr_num_samples = len(data['user_data'][u]['y'])
-            if curr_num_samples >= 2:
-                # ensures number of train and test samples both >= 1
-                num_train_samples = max(1, int(args.frac * curr_num_samples))
-                if curr_num_samples == 2:
-                    num_train_samples = 1
+                train_blist = [False for _ in range(curr_num_samples)]
+                test_blist = [False for _ in range(curr_num_samples)]
 
-                num_test_samples = curr_num_samples - num_train_samples
+                for j in train_indices:
+                    train_blist[j] = True
+                for j in test_indices:
+                    test_blist[j] = True
 
-                indices = [j for j in range(curr_num_samples)]
-                if args.name in ['shakespeare']:
-                    train_indices = [i for i in range(num_train_samples)]
-                    test_indices = [i for i in range(num_train_samples + 80 - 1, curr_num_samples)]
-                else:
-                    train_indices = rng.sample(indices, num_train_samples)
-                    test_indices = [i for i in range(curr_num_samples) if i not in train_indices]
+                for j in range(curr_num_samples):
+                    if (train_blist[j]):
+                        user_data_train[u]['x'].append(data['user_data'][u]['x'][j])
+                        user_data_train[u]['y'].append(data['user_data'][u]['y'][j])
+                    elif (test_blist[j]):
+                        user_data_test[u]['x'].append(data['user_data'][u]['x'][j])
+                        user_data_test[u]['y'].append(data['user_data'][u]['y'][j])
 
-                if len(train_indices) >= 1 and len(test_indices) >= 1:
-                    user_indices.append(i)
-                    num_samples_train.append(num_train_samples)
-                    num_samples_test.append(num_test_samples)
-                    user_data_train[u] = {'x': [], 'y': []}
-                    user_data_test[u] = {'x': [], 'y': []}
+    users = [data['users'][i] for i in user_indices]
 
-                    train_blist = [False for _ in range(curr_num_samples)]
-                    test_blist = [False for _ in range(curr_num_samples)]
+    all_data_train = {}
+    all_data_train['users'] = users
+    all_data_train['num_samples'] = num_samples_train
+    all_data_train['user_data'] = user_data_train
 
-                    for j in train_indices:
-                        train_blist[j] = True
-                    for j in test_indices:
-                        test_blist[j] = True
-
-                    for j in range(curr_num_samples):
-                        if (train_blist[j]):
-                            user_data_train[u]['x'].append(data['user_data'][u]['x'][j])
-                            user_data_train[u]['y'].append(data['user_data'][u]['y'][j])
-                        elif (test_blist[j]):
-                            user_data_test[u]['x'].append(data['user_data'][u]['x'][j])
-                            user_data_test[u]['y'].append(data['user_data'][u]['y'][j])
-
-        users = [data['users'][i] for i in user_indices]
-
-        all_data_train = {}
-        all_data_train['users'] = users
-        all_data_train['num_samples'] = num_samples_train
-        all_data_train['user_data'] = user_data_train
-
-        all_data_test = {}
-        all_data_test['users'] = users
-        all_data_test['num_samples'] = num_samples_test
-        all_data_test['user_data'] = user_data_test
-        file_name_train = '%s_train_%s.json' % ((f[:-5]), arg_label)
-        file_name_test = '%s_test_%s.json' % ((f[:-5]), arg_label)
-        ouf_dir_train = os.path.join(dir, '{}_workers'.format(n_workers), 'train', file_name_train)
-        ouf_dir_test = os.path.join(dir, '{}_workers'.format(n_workers), 'test', file_name_test)
-        print('writing %s' % file_name_train)
-        with open(ouf_dir_train, 'w') as outfile:
-            json.dump(all_data_train, outfile)
-        print('writing %s' % file_name_test)
-        with open(ouf_dir_test, 'w') as outfile:
-            json.dump(all_data_test, outfile)
+    all_data_test = {}
+    all_data_test['users'] = users
+    all_data_test['num_samples'] = num_samples_test
+    all_data_test['user_data'] = user_data_test
+    file_name_train = '%s_train_%s.json' % ((f[:-5]), arg_label)
+    file_name_test = '%s_test_%s.json' % ((f[:-5]), arg_label)
+    ouf_dir_train = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'train', file_name_train)
+    ouf_dir_test = os.path.join(dir, '{}_workers'.format(n_workers), '{}_spw'.format(args.spw), 'test', file_name_test)
+    print('writing %s' % file_name_train)
+    with open(ouf_dir_train, 'w') as outfile:
+        json.dump(all_data_train, outfile)
+    print('writing %s' % file_name_test)
+    with open(ouf_dir_test, 'w') as outfile:
+        json.dump(all_data_test, outfile)

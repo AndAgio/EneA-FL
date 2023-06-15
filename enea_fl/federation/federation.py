@@ -9,14 +9,15 @@ from enea_fl.models import ServerModel, WorkerModel, read_data
 
 
 class Federation:
-    def __init__(self, dataset, n_workers, iid=True, n_rounds=100, use_val_set=False):
+    def __init__(self, dataset, n_workers, max_spw=10000, iid=True, n_rounds=100, use_val_set=False):
         self.dataset = dataset
         self.n_workers = n_workers
+        self.max_spw = max_spw
         self.iid = iid
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
         print('Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
-        self.workers = Federation.setup_workers(dataset, self.n_workers, self.iid, use_val_set)
+        self.workers = Federation.setup_workers(dataset, self.n_workers, self.max_spw, self.iid, use_val_set)
         self.server = Federation.create_server(dataset, self.workers)
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         print('Federation initialized with {} workers!'.format(len(self.workers)))
@@ -64,34 +65,37 @@ class Federation:
         return Server(ServerModel(dataset), possible_workers)
 
     @staticmethod
-    def setup_workers(dataset, n_workers=100, iid=True, use_val_set=False):
+    def setup_workers(dataset, n_workers=100, max_spw=10000, iid=True, use_val_set=False):
         print('Setting up workers...')
         eval_set = 'test' if not use_val_set else 'val'
         try:
-            train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), 'train')
-            test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), eval_set)
-            workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
-            assert len(workers) == n_workers
+            workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
+                                                                           n_workers=n_workers,
+                                                                           max_spw=max_spw,
+                                                                           eval_set=eval_set)
         except (FileNotFoundError, AssertionError) as error:
             sf = 0.1 if dataset == 'femnist' else 1
             parent_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
             dataset_dir = os.path.join(parent_path, 'data', dataset)
             if isinstance(error, AssertionError):
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'sampled_data'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'rem_user_data'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'train'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers), 'test'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
+                                           '{}_spw'.format(max_spw), 'sampled_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
+                                           '{}_spw'.format(max_spw), 'train'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
+                                           '{}_spw'.format(max_spw), 'test'))
             _ = subprocess.call("{}/preprocess.sh -s {} "
-                                "--iu {} --sf {} -k 0 -t sample".format(dataset_dir,
-                                                                        'iid' if iid else 'niid',
-                                                                        n_workers,
-                                                                        sf),
+                                "--iu {} --spw {} --sf {}".format(dataset_dir,
+                                                                  'iid' if iid else 'niid',
+                                                                  n_workers,
+                                                                  max_spw,
+                                                                  sf),
                                 cwd=dataset_dir,
                                 shell=True)
-            train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), 'train')
-            test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers), eval_set)
-            workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
-            assert len(workers) == n_workers
+            workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
+                                                                           n_workers=n_workers,
+                                                                           max_spw=max_spw,
+                                                                           eval_set=eval_set)
         device_types = np.random.choice(['raspberry_0', 'raspberry_2', 'raspberry_3', 'nano', 'xavier'],
                                         size=len(workers), replace=True)
         # energy_policies = np.random.choice(['normal', 'conservative', 'extreme'],
@@ -100,3 +104,13 @@ class Federation:
                                            size=len(workers), replace=True)
         workers = Federation.create_workers(workers, device_types, energy_policies, train_data, test_data, dataset)
         return workers
+
+    @staticmethod
+    def read_data_from_dir(dataset, n_workers=100, max_spw=10000, eval_set='test'):
+        train_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers),
+                                      '{}_spw'.format(max_spw), 'train')
+        test_data_dir = os.path.join('data', dataset, 'data', '{}_workers'.format(n_workers),
+                                     '{}_spw'.format(max_spw), eval_set)
+        workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
+        assert len(workers) == n_workers
+        return workers, train_data, test_data
