@@ -157,17 +157,25 @@ IUSERTAG=""
 if [ ! -z $IUSER ]; then
     IUSERTAG="--u $IUSER"
 fi
+NUSERTAG=""
+if [ ! -z $IUSER ]; then
+    NUSERTAG="--n_workers $IUSER"
+fi
 SFRACTAG=""
 if [ ! -z $SFRAC ]; then
     SFRACTAG="--fraction $SFRAC"
 fi
 
+if [ ! -d "data/${IUSER}_workers" ]; then
+    mkdir data/"${IUSER}"_workers
+fi
+
 if [ "$CONT_SCRIPT" = true ] && [ ! $SAMPLE = "na" ]; then
-    if [ -d "data/sampled_data" ] && [ "$(ls -A data/sampled_data)" ]; then
+    if [ -d "data/${IUSER}_workers/sampled_data" ] && [ "$(ls -A data/"${IUSER}"_workers/sampled_data)" ]; then
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/sampled_data" ]; then
-            mkdir data/sampled_data
+        if [ ! -d "data/${IUSER}_workers/sampled_data" ]; then
+            mkdir data/"${IUSER}"_workers/sampled_data
         fi
 
         cd ../utils
@@ -187,19 +195,19 @@ fi
 
 # remove users with less then given number of samples
 if [ "$CONT_SCRIPT" = true ] && [ ! $MINSAMPLES = "na" ]; then
-    if [ -d "data/rem_user_data" ] && [ "$(ls -A data/rem_user_data)" ]; then
+    if [ -d "data/${IUSER}_workers/rem_user_data" ] && [ "$(ls -A data/"${IUSER}"_workers/rem_user_data)" ]; then
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/rem_user_data" ]; then
-            mkdir data/rem_user_data
+        if [ ! -d "data/${IUSER}_workers/rem_user_data" ]; then
+            mkdir data/"${IUSER}"_workers/rem_user_data
         fi
 
         cd ../utils
 
         if [ -z $MINSAMPLES ]; then
-            python3 remove_users.py $NAMETAG
+            python3 remove_users.py $NAMETAG $NUSERTAG
         else
-            python3 remove_users.py $NAMETAG --min_samples $MINSAMPLES
+            python3 remove_users.py $NAMETAG $NUSERTAG --min_samples $MINSAMPLES
         fi
 
         cd ../$NAME
@@ -213,14 +221,14 @@ if [ ! -z $TFRAC ]; then
 fi
 
 if [ "$CONT_SCRIPT" = true ] && [ ! $TRAIN = "na" ]; then
-    if [ -d "data/train" ] && [ "$(ls -A data/train)" ]; then
+    if [ -d "data/${IUSER}_workers/train" ] && [ "$(ls -A data/"${IUSER}"_workers/train)" ]; then
         CONT_SCRIPT=false
     else
-        if [ ! -d "data/train" ]; then
-            mkdir data/train
+        if [ ! -d "data/${IUSER}_workers/train" ]; then
+            mkdir data/"${IUSER}"_workers/train
         fi
-        if [ ! -d "data/test" ]; then
-            mkdir data/test
+        if [ ! -d "data/${IUSER}_workers/test" ]; then
+            mkdir data/"${IUSER}"_workers/test
         fi
 
         cd ../utils
@@ -229,23 +237,23 @@ if [ "$CONT_SCRIPT" = true ] && [ ! $TRAIN = "na" ]; then
         SEED_ARGUMENT="${SPLIT_SEED:--1}"
 
         if [ -z $TRAIN ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $TFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
         elif [ $TRAIN = "user" ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_user $TFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_user $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
         elif [ $TRAIN = "sample" ]; then
-            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_sample $TFRACTAG --seed ${SEED_ARGUMENT}
+            LEAF_DATA_META_DIR=${META_DIR} python3 split_data.py $NAMETAG --by_sample $NUSERTAG $TFRACTAG --seed ${SEED_ARGUMENT}
         fi
 
         cd ../$NAME
     fi
 fi
 
-if [ -z "${NO_CHECKSUM}" ]; then
-    echo '------------------------------'
-    echo "calculating JSON file checksums"
-    find 'data/' -type f -name '*.json' -exec md5sum {} + | sort -k 2 > ${CHECKSUM_FNAME}
-    echo "checksums written to ${CHECKSUM_FNAME}"
-fi
+#if [ -z "${NO_CHECKSUM}" ]; then
+#    echo '------------------------------'
+#    echo "calculating JSON file checksums"
+#    find 'data/' -type f -name '*.json' -exec md5sum {} + | sort -k 2 > ${CHECKSUM_FNAME}
+#    echo "checksums written to ${CHECKSUM_FNAME}"
+#fi
 
 if [ "$CONT_SCRIPT" = false ]; then
     echo "Data for one of the specified preprocessing tasks has already been"

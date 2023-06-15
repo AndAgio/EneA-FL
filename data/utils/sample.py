@@ -153,7 +153,7 @@ arg_label = arg_frac
 if (args.iid):
     arg_label = '%s_%s' % (arg_nu, arg_label)
 file_name = '%s_%s_%s.json' % ((f[:-5]), slabel, arg_label)
-ouf_dir = os.path.join(data_dir, 'sampled_data', file_name)
+ouf_dir = os.path.join(data_dir, '{}_workers'.format(n_workers), 'sampled_data', file_name)
 
 print('writing %s' % file_name)
 with open(ouf_dir, 'w') as outfile:

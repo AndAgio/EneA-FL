@@ -16,6 +16,10 @@ parser.add_argument('--name',
                 type=str,
                 choices=DATASETS,
                 default='sent140')
+parser.add_argument('--n_workers',
+                help='number of workers selected for the federation;',
+                type=int,
+                default=100)
 
 parser.add_argument('--min_samples',
                 help='users with less than x samples are discarded; default: 10;',
@@ -27,9 +31,11 @@ args = parser.parse_args()
 print('------------------------------')
 print('removing users with less than %d samples' % args.min_samples)
 
+n_workers = args.n_workers
+
 parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 dir = os.path.join(parent_path, args.name, 'data')
-subdir = os.path.join(dir, 'sampled_data')
+subdir = os.path.join(dir, '{}_workers'.format(n_workers), 'sampled_data')
 files = []
 if os.path.exists(subdir):
     files = os.listdir(subdir)
@@ -70,7 +76,7 @@ for f in files:
     all_data['user_data'] = user_data
 
     file_name = '%s_keep_%d.json' % ((f[:-5]), args.min_samples)
-    ouf_dir = os.path.join(dir, 'rem_user_data', file_name)
+    ouf_dir = os.path.join(dir, '{}_workers'.format(n_workers), 'rem_user_data', file_name)
 
     print('writing %s' % file_name)
     with open(ouf_dir, 'w') as outfile:

@@ -76,6 +76,10 @@ parser.add_argument('--by_user',
 parser.add_argument('--by_sample',
                 help="divide each user's samples into training and test set groups;",
                 dest='user', action='store_false')
+parser.add_argument('--n_workers',
+                help='number of workers selected for the federation;',
+                type=int,
+                default=100)
 parser.add_argument('--frac',
                 help='fraction in training set; default: 0.9;',
                 type=float,
@@ -92,14 +96,16 @@ args = parser.parse_args()
 print('------------------------------')
 print('generating training and test sets')
 
+n_workers = args.n_workers
+
 parent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 dir = os.path.join(parent_path, args.name, 'data')
-subdir = os.path.join(dir, 'rem_user_data')
+subdir = os.path.join(dir, '{}_workers'.format(n_workers), 'rem_user_data')
 files = []
 if os.path.exists(subdir):
     files = os.listdir(subdir)
 if len(files) == 0:
-    subdir = os.path.join(dir, 'sampled_data')
+    subdir = os.path.join(dir, '{}_workers'.format(n_workers), 'sampled_data')
     if os.path.exists(subdir):
         files = os.listdir(subdir)
 if len(files) == 0:
@@ -238,8 +244,8 @@ else:
         all_data_test['user_data'] = user_data_test
         file_name_train = '%s_train_%s.json' % ((f[:-5]), arg_label)
         file_name_test = '%s_test_%s.json' % ((f[:-5]), arg_label)
-        ouf_dir_train = os.path.join(dir, 'train', file_name_train)
-        ouf_dir_test = os.path.join(dir, 'test', file_name_test)
+        ouf_dir_train = os.path.join(dir, '{}_workers'.format(n_workers), 'train', file_name_train)
+        ouf_dir_test = os.path.join(dir, '{}_workers'.format(n_workers), 'test', file_name_test)
         print('writing %s' % file_name_train)
         with open(ouf_dir_train, 'w') as outfile:
             json.dump(all_data_train, outfile)
