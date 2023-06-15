@@ -28,10 +28,13 @@ class CnnSent(nn.Module):
         # Convolution Layers
         self.conv1 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
                                kernel_size=self.config.kernel_size[0])
+        self.kernel_size1 = self.config.max_sen_len - self.config.kernel_size[0] + 1
         self.conv2 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
                                kernel_size=self.config.kernel_size[1])
+        self.kernel_size2 = self.config.max_sen_len - self.config.kernel_size[1] + 1
         self.conv3 = nn.Conv1d(in_channels=word_embeddings_size, out_channels=self.config.num_channels,
                                kernel_size=self.config.kernel_size[2])
+        self.kernel_size3 = self.config.max_sen_len - self.config.kernel_size[2] + 1
         self.dropout = nn.Dropout(self.config.dropout_keep)
         # Fully connected layer
         self.fc = nn.Linear(self.config.num_channels * len(self.config.kernel_size), self.config.output_size)
@@ -42,19 +45,13 @@ class CnnSent(nn.Module):
         embedded_sent = self.embeddings(x)
         embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
         # First convolution
-        conv_out1 = t_func.relu(self.conv1(embedded_sent))
-        kernel_size = self.config.max_sen_len - self.config.kernel_size[0] + 1
-        conv_out1 = t_func.max_pool1d(conv_out1, kernel_size=kernel_size).squeeze()
+        out1 = t_func.max_pool1d(t_func.relu(self.conv1(embedded_sent)), kernel_size=self.kernel_size1).squeeze()
         # Second convolution
-        conv_out2 = t_func.relu(self.conv2(embedded_sent))
-        kernel_size = self.config.max_sen_len - self.config.kernel_size[1] + 1
-        conv_out2 = t_func.max_pool1d(conv_out2, kernel_size=kernel_size).squeeze()
+        out2 = t_func.max_pool1d(t_func.relu(self.conv2(embedded_sent)), kernel_size=self.kernel_size3).squeeze()
         # Third convolution
-        conv_out3 = t_func.relu(self.conv3(embedded_sent))
-        kernel_size = self.config.max_sen_len - self.config.kernel_size[2] + 1
-        conv_out3 = t_func.max_pool1d(conv_out3, kernel_size=kernel_size).squeeze()
+        out3 = t_func.max_pool1d(t_func.relu(self.conv3(embedded_sent)), kernel_size=self.kernel_size3).squeeze()
         # Aggregate convolutions
-        all_out = torch.cat((conv_out1, conv_out2, conv_out3), 1)
+        all_out = torch.cat((out1, out2, out3), 1)
         # Fully connected and output
         final_feature_map = self.dropout(all_out)
         return t_func.softmax(self.fc(final_feature_map), dim=1)
