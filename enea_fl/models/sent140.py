@@ -40,7 +40,7 @@ class CnnSent(nn.Module):
         x = x.type(torch.LongTensor).permute(1, 0)
         # Embed input to GloVe embeddings
         embedded_sent = self.embeddings(x)
-        embedded_sent = embedded_sent.permute(1, 2, 0)
+        embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
         # First convolution
         conv_out1 = t_func.relu(self.conv1(embedded_sent))
         kernel_size = self.config.max_sen_len - self.config.kernel_size[0] + 1
