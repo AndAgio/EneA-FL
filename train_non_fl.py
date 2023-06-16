@@ -100,7 +100,7 @@ class Trainer:
         for batch_input, batch_label in batch_data(self.train_data, batch_size):
             batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
             self._optimizer.zero_grad()
-            outputs = self.model(batch_input, logger=self.logger)
+            outputs = self.model(batch_input)
             loss = self.criterion(outputs, batch_label)
             loss.backward()
             self._optimizer.step()
