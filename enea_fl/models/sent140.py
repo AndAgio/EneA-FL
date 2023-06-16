@@ -40,12 +40,12 @@ class CnnSent(nn.Module):
         self.fc = nn.Linear(self.config.num_channels * len(self.config.kernel_size), self.config.output_size)
 
     def forward(self, x, logger=None):
-        x = x.type(torch.LongTensor).permute(1, 0)
         logger.print_it('Input device: {}'.format(x.get_device()))
-        logger.print_it('self.embeddings device: {}'.format(self.embeddings.get_device()))
         # Embed input to GloVe embeddings
         embedded_sent = self.embeddings(x)
+        logger.print_it('embedded_sent device: {}'.format(embedded_sent.get_device()))
         embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
+        logger.print_it('embedded_sent device: {}'.format(embedded_sent.get_device()))
         # First convolution
         out1 = t_func.max_pool1d(t_func.relu(self.conv1(embedded_sent)), kernel_size=self.kernel_size1).squeeze(2)
         # Second convolution
