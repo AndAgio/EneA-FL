@@ -1,6 +1,7 @@
 import math
 import warnings
 import torch
+from enea_fl.utils import DumbLogger
 
 
 class Worker:
@@ -10,21 +11,26 @@ class Worker:
                  energy_policy='normal',
                  train_data={'x': [], 'y': []},
                  eval_data={'x': [], 'y': []},
-                 model=None):
+                 model=None,
+                 logger=None):
+        self.logger = logger if logger is not None else DumbLogger()
         self._model = model
+        self._model.set_logger(logger)
         self.id = worker_id
         self.device_type = device_type
         gpu = True if device_type in ['nano', 'jetson'] else False
         self.processing_device = torch.device('cuda' if gpu and torch.cuda.is_available() else 'cpu')
-        print('Worker {} is running on a {} and using a {} for training and inference!'.format(self.id,
-                                                                                               self.device_type,
-                                                                                               self.processing_device))
+        self.logger.print_it('Worker {} is running on a {} and using '
+                             'a {} for training and inference!'.format(self.id,
+                                                                       self.device_type,
+                                                                       self.processing_device))
         self.move_model_to_device()
         self.energy_policy = energy_policy
         self.train_data = train_data
         self.eval_data = eval_data
 
-    def train(self, batch_size=10):
+    def train(self, batch_size=10, round_ind=-1):
+        self.logger.print_it('-------- Training model at round {} --------'.format(round_ind))
         train_steps = self.compute_local_energy_policy(batch_size=batch_size)
         energy_used, time_taken, comp = self.model.train(train_data=self.train_data,
                                                          train_steps=train_steps,
@@ -32,13 +38,15 @@ class Worker:
         num_train_samples = train_steps * batch_size
         return energy_used, time_taken, comp, num_train_samples
 
-    def test_local(self, set_to_use='test'):
+    def test_local(self, set_to_use='test', round_ind=-1):
+        self.logger.print_it('-------- Testing local model at round {} --------'.format(round_ind))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_my_model(test_data=data)
 
-    def test_global(self, model_to_test, set_to_use='test'):
+    def test_global(self, model_to_test, set_to_use='test', round_ind=-1):
+        self.logger.print_it('-------- Testing global model at round {} --------'.format(round_ind))
         data = self.select_data_for_testing(set_to_use)
-        return self.model.test_final_model(model_to_test=model_to_test,
+        return self.model.test_final_model(final_model=model_to_test,
                                            test_data=data)
 
     def select_data_for_testing(self, set_to_use='test'):
@@ -96,8 +104,6 @@ class Worker:
 
     @model.setter
     def model(self, model):
-        warnings.warn('The current implementation shares the model among all clients.'
-                      'Setting it on one client will effectively modify all clients.')
         self._model = model
 
     def save_model(self, checkpoints_folder='checkpoints'):

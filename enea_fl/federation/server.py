@@ -1,14 +1,16 @@
 import numpy as np
 import random
 import torch
+from enea_fl.utils import DumbLogger
 
 
 class Server:
-    def __init__(self, server_model, possible_workers=None):
+    def __init__(self, server_model, possible_workers=None, logger=None):
         self.model = server_model
         self.possible_workers = possible_workers if possible_workers is not None else []
         self.selected_workers = []
         self.updates = []
+        self.logger = logger if logger is not None else DumbLogger()
 
     def add_new_worker(self, worker):
         self.possible_workers.append(worker)
@@ -30,11 +32,12 @@ class Server:
     def get_all_workers(self):
         return self.possible_workers
 
-    def train_model(self, batch_size=10):
+    def train_model(self, batch_size=10, round_ind=-1):
         self.select_workers()
         workers = self.selected_workers
         w_ids = self.get_clients_info(workers)
-        print('Selected workers: {}'.format(w_ids))
+        self.logger.print_it('---------- Round {} --------------'.format(round_ind))
+        self.logger.print_it('Selected workers: {}'.format(w_ids))
         sys_metrics = {w.id: {'bytes_written': 0,
                               'bytes_read': 0,
                               'energy_used': 0,
@@ -42,7 +45,8 @@ class Server:
                               'local_computations': 0} for w in workers}
         for w in workers:
             w.set_weights(self.model.get_weights())
-            energy_used, time_taken, comp, num_samples = w.train(batch_size)
+            energy_used, time_taken, comp, num_samples = w.train(batch_size=batch_size,
+                                                                 round_ind=round_ind)
             sys_metrics[w.id]['bytes_read'] += w.model.size
             sys_metrics[w.id]['bytes_written'] += w.model.size
             sys_metrics[w.id]['energy_used'] += energy_used
@@ -50,6 +54,8 @@ class Server:
             sys_metrics[w.id]['local_computations'] = comp
             update = w.get_weights()
             self.updates.append((num_samples, update))
+        self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
+        self.logger.print_it('----------------------------------')
 
         return sys_metrics
 
@@ -72,13 +78,13 @@ class Server:
         self.model.set_weights(Server.aggregate_model(received_model_updates))
         self.updates = []
 
-    def test_model(self, workers_to_test=None, set_to_use='test'):
+    def test_model(self, workers_to_test=None, set_to_use='test', round_ind=-1):
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers
         for worker in workers_to_test:
             worker.set_weights(self.model.get_weights())
-            c_metrics = worker.test_global(self.get_model(), set_to_use)
+            c_metrics = worker.test_global(self.get_model(), set_to_use, round_ind=round_ind)
             metrics[worker.id] = c_metrics
         return metrics
 

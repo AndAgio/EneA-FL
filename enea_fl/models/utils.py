@@ -60,7 +60,6 @@ def read_data(train_data_dir, test_data_dir):
         train_data: dictionary of train data
         test_data: dictionary of test data
     '''
-    print('Reading data from files...')
     train_workers, train_groups, train_data = read_dir(train_data_dir)
     test_workers, test_groups, test_data = read_dir(test_data_dir)
 

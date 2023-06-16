@@ -12,15 +12,17 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
 from enea_fl.models import CnnSent, CnnFemnist, SentConfig
+from enea_fl.utils import get_logger
 
 
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01):
         assert dataset in ['femnist', 'sent140']
+        self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
         self.processing_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        print('Using a {} for training and inference!'.format(self.processing_device))
+        self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
         self.model = self.model.to(self.processing_device)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
@@ -32,23 +34,22 @@ class Trainer:
         self.read_data_from_dir()
 
     def read_data_from_dir(self):
-        print('Reading data. This may take a while...')
+        self.logger.print_it('Reading data. This may take a while...')
         data_dir = os.path.join('data', self.dataset, 'data', 'all_data')
         try:
-            self.train_data, self.test_data = Trainer.read_data(data_dir)
+            self.train_data, self.test_data = self.read_data(data_dir)
         except FileNotFoundError:
             _ = subprocess.call("./ data_to_json.sh",
                                 cwd=os.path.join('data', self.dataset, 'preprocess'),
                                 shell=True)
-            self.train_data, self.test_data = Trainer.read_data(data_dir)
+            self.train_data, self.test_data = self.read_data(data_dir)
 
-    @staticmethod
-    def read_data(data_dir):
+    def read_data(self, data_dir):
         data = {'x': [], 'y': []}
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
         for i, f in enumerate(files):
-            print('Reading file {} out of {}'.format(i+1, len(files)), end='\r')
+            self.logger.print_it_same_line('Reading file {} out of {}'.format(i+1, len(files)))
             file_path = os.path.join(data_dir, f)
             with open(file_path, 'r') as inf:
                 cdata = json.load(inf)
@@ -56,34 +57,34 @@ class Trainer:
                 for user in users:
                     data['x'] += cdata['user_data'][user]['x']
                     data['y'] += cdata['user_data'][user]['y']
-        print()
-        print('Splitting train and test files...')
+        self.logger.set_logger_newline()
+        self.logger.print_it('Splitting train and test files...')
         x_train, x_test, y_train, y_test = train_test_split(data['x'],
                                                             data['y'],
                                                             test_size=0.33,
                                                             random_state=42)
-        print('Gathering xs and ys on single dictionary...')
+        self.logger.print_it('Gathering xs and ys on single dictionary...')
         train_data = {'x': x_train, 'y': y_train}
         test_data = {'x': x_test, 'y': y_test}
         return train_data, test_data
 
     def train(self, epochs=100, batch_size=10):
-        print('--- Start training ---')
+        self.logger.print_it('--- Start training ---')
         for epoch in range(epochs):
-            print('===== | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ======='.format(epoch + 1, epochs,
+            self.logger.print_it('===== | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ======='.format(epoch + 1, epochs,
                                                                                      self.lr, batch_size))
             # Simulate server model training on selected clients' data
             final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
             # Test model
             _ = self.test_model(batch_size=batch_size)
-            print('============================================')
-        print('--- Training finished! ---')
+            self.logger.print_it('============================================')
+        self.logger.print_it('--- Training finished! ---')
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
         if not os.path.exists(ckpt_path):
             os.makedirs(ckpt_path)
         save_path = self.save_model(checkpoints_folder=ckpt_path)
-        print('Model saved in path: %s' % save_path)
+        self.logger.print_it('Model saved in path: %s' % save_path)
 
     def train_single_epoch(self, batch_size=10):
         start = time.time()
@@ -112,7 +113,7 @@ class Trainer:
                                batch_size=batch_size,
                                metrics=metrics,
                                mode='train')
-        print()
+        self.logger.set_logger_newline()
         final_loss = running_loss / counter
         stop = time.time()
         energy = 0.  # TODO: find how to compute energy here
@@ -141,7 +142,7 @@ class Trainer:
                                    batch_size=batch_size,
                                    metrics=metrics,
                                    mode='test')
-            print()
+            self.logger.set_logger_newline()
             # Compute accuracy
             f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
             accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
@@ -193,7 +194,7 @@ class Trainer:
                 index += 1
             message += train_metrics_message
         message += '|'
-        print(message, end='\r')
+        self.logger.print_it_same_line(message)
 
     def save_model(self, checkpoints_folder='checkpoints'):
         # Save server model

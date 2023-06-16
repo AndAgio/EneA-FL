@@ -5,8 +5,9 @@ import numpy as np
 import math
 from .server import Server
 from .worker import Worker
-from .utils import get_stat_writer_function, get_sys_writer_function, print_stats
+from .utils import print_metrics, write_metrics_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
+from enea_fl.utils import get_logger
 
 
 class Federation:
@@ -17,90 +18,142 @@ class Federation:
         self.sampling_mode = sampling_mode
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
-        print('Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
-        self.workers = Federation.setup_workers(dataset, self.n_workers, self.max_spw, self.sampling_mode, use_val_set)
-        self.server = Federation.create_server(dataset, self.workers)
+        self.clean_previous_loggers()
+        self.federation_logger = get_logger(node_type='federation',
+                                            node_id='federation',
+                                            log_folder=os.path.join('logs',
+                                                                    dataset,
+                                                                    '{}_workers'.format(n_workers),
+                                                                    'spw={}'.format(max_spw),
+                                                                    'mode={}'.format(sampling_mode)))
+        self.federation_logger.print_it(
+            'Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
+        self.workers = self.setup_workers()
+        self.server = self.create_server()
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
-        print('Federation initialized with {} workers!'.format(len(self.workers)))
+        self.federation_logger.print_it('Federation initialized with {} workers!'.format(len(self.workers)))
 
     def run(self, clients_per_round=10, batch_size=10, eval_every=1):
         # Initial status
-        print('--- Random Initialization ---')
-        stat_writer_fn = get_stat_writer_function(self.worker_ids, self.worker_num_samples,
-                                                  metrics_dir='metrics', metrics_name='federation')
-        sys_writer_fn = get_sys_writer_function(metrics_dir='metrics', metrics_name='federation')
-        print_stats(0, self.server, stat_writer_fn, self.use_val_set)
+        self.federation_logger.print_it('--- Random Initialization ---')
+        test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
+                                              round_ind=0)
+        print_metrics(logger=self.federation_logger,
+                      metrics=test_metrics,
+                      weights=self.server.get_clients_info(self.server.get_all_workers())[1],
+                      prefix='{}_'.format('test' if not self.use_val_set else 'val'))
+        write_metrics_to_csv(num_round=0,
+                             ids=[w.id for w in self.server.get_all_workers()],
+                             metrics=test_metrics,
+                             partition='test' if not self.use_val_set else 'val',
+                             metrics_dir='metrics',
+                             metrics_name='{}_{}'.format('federation', 'performance'))
 
         # Simulate training
-        for i in range(self.n_rounds):
-            print('--- Round {} of {}: Training {} workers ---'.format(i + 1, self.n_rounds, clients_per_round))
+        for round_ind in range(self.n_rounds):
+            self.federation_logger.print_it('--- Round {} of {}: Training {} workers ---'.format(round_ind + 1,
+                                                                                                 self.n_rounds,
+                                                                                                 clients_per_round))
 
             # Simulate server model training on selected clients' data
-            sys_metrics = self.server.train_model(batch_size=batch_size)
+            sys_metrics = self.server.train_model(batch_size=batch_size,
+                                                  round_ind=round_ind + 1)
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
-            sys_writer_fn(i + 1, worker_ids, sys_metrics, worker_num_samples)
+            write_metrics_to_csv(num_round=round_ind + 1,
+                                 ids=worker_ids,
+                                 metrics=sys_metrics,
+                                 partition='train',
+                                 metrics_dir='metrics',
+                                 metrics_name='{}_{}'.format('federation', 'energy'))
 
             # Update server model
             self.server.update_model()
 
             # Test model
-            if (i + 1) % eval_every == 0 or (i + 1) == self.n_rounds:
-                print_stats(i + 1, self.server, stat_writer_fn, self.use_val_set)
+            if (round_ind + 1) % eval_every == 0 or (round_ind + 1) == self.n_rounds:
+                # print_stats(self.federation_logger, i + 1, self.server, stat_writer_fn, self.use_val_set)
+                test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
+                                                      round_ind=round_ind + 1)
+                print_metrics(logger=self.federation_logger,
+                              metrics=test_metrics,
+                              weights=self.server.get_clients_info(self.server.get_all_workers())[1],
+                              prefix='{}_'.format('test' if not self.use_val_set else 'val'))
+                write_metrics_to_csv(num_round=round_ind + 1,
+                                     ids=[w.id for w in self.server.get_all_workers()],
+                                     metrics=test_metrics,
+                                     partition='test' if not self.use_val_set else 'val',
+                                     metrics_dir='metrics',
+                                     metrics_name='{}_{}'.format('federation', 'performance'))
 
+        self.federation_logger.print_it('--- Federation rounds finished! ---')
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
         if not os.path.exists(ckpt_path):
             os.makedirs(ckpt_path)
         save_path = self.server.save_model(checkpoints_folder=ckpt_path)
-        print('Model saved in path: %s' % save_path)
+        self.federation_logger.print_it('Model saved in path: {}'.format(save_path))
 
     @staticmethod
-    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset):
-        workers = [Worker(u, device_types[i], energy_policies[i],
-                          train_data[u], test_data[u], WorkerModel(dataset)) for i, u in enumerate(workers)]
+    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset, loggers=None):
+        workers = [Worker(worker_id=u,
+                          device_type=device_types[i],
+                          energy_policy=energy_policies[i],
+                          train_data=train_data[u],
+                          eval_data=test_data[u],
+                          model=WorkerModel(dataset),
+                          logger=loggers[i]) for i, u in enumerate(workers)]
         return workers
 
-    @staticmethod
-    def create_server(dataset, possible_workers):
-        print('Setting up server...')
-        return Server(ServerModel(dataset), possible_workers)
+    def create_server(self):
+        self.federation_logger.print_it('Setting up server...')
+        logger = get_logger(node_type='server',
+                            node_id='server',
+                            log_folder=os.path.join('logs',
+                                                    self.dataset,
+                                                    '{}_workers'.format(self.n_workers),
+                                                    'spw={}'.format(self.max_spw),
+                                                    'mode={}'.format(self.sampling_mode)))
+        return Server(server_model=ServerModel(self.dataset),
+                      possible_workers=self.workers,
+                      logger=logger)
 
-    @staticmethod
-    def setup_workers(dataset, n_workers=100, max_spw=math.inf, sampling_mode='iid+sim', use_val_set=False):
-        print('Setting up workers...')
-        eval_set = 'test' if not use_val_set else 'val'
+    def setup_workers(self):
+        self.federation_logger.print_it('Setting up workers...')
+        eval_set = 'test' if not self.use_val_set else 'val'
         try:
-            workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
-                                                                           n_workers=n_workers,
-                                                                           sampling_mode=sampling_mode,
-                                                                           max_spw=max_spw,
+            self.federation_logger.print_it('Trying to read data from files...')
+            workers, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
+                                                                           n_workers=self.n_workers,
+                                                                           sampling_mode=self.sampling_mode,
+                                                                           max_spw=self.max_spw,
                                                                            eval_set=eval_set)
         except (FileNotFoundError, AssertionError) as error:
-            sf = 0.1 if dataset == 'femnist' else 1
+            self.federation_logger.print_it('Files not found, processing data...')
+            sf = 0.1 if self.dataset == 'femnist' else 1
             parent_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-            dataset_dir = os.path.join(parent_path, 'data', dataset)
+            dataset_dir = os.path.join(parent_path, 'data', self.dataset)
             if isinstance(error, AssertionError):
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           'spw={}'.format(max_spw),
-                                           'mode={}'.format(sampling_mode), 'sampled_data'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           'spw={}'.format(max_spw),
-                                           'mode={}'.format(sampling_mode), 'train'))
-                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(n_workers),
-                                           'spw={}'.format(max_spw),
-                                           'mode={}'.format(sampling_mode), 'test'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(self.n_workers),
+                                           'spw={}'.format(self.max_spw),
+                                           'mode={}'.format(self.sampling_mode), 'sampled_data'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(self.n_workers),
+                                           'spw={}'.format(self.max_spw),
+                                           'mode={}'.format(self.sampling_mode), 'train'))
+                shutil.rmtree(os.path.join(dataset_dir, 'data', '{}_workers'.format(self.n_workers),
+                                           'spw={}'.format(self.max_spw),
+                                           'mode={}'.format(self.sampling_mode), 'test'))
             _ = subprocess.call("{}/preprocess.sh -s {} "
                                 "--iu {} --spw {} --sf {}".format(dataset_dir,
-                                                                  sampling_mode,
-                                                                  n_workers,
-                                                                  max_spw,
+                                                                  self.sampling_mode,
+                                                                  self.n_workers,
+                                                                  self.max_spw,
                                                                   sf),
                                 cwd=dataset_dir,
                                 shell=True)
-            workers, train_data, test_data = Federation.read_data_from_dir(dataset=dataset,
-                                                                           n_workers=n_workers,
-                                                                           sampling_mode=sampling_mode,
-                                                                           max_spw=max_spw,
+            workers, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
+                                                                           n_workers=self.n_workers,
+                                                                           sampling_mode=self.sampling_mode,
+                                                                           max_spw=self.max_spw,
                                                                            eval_set=eval_set)
         device_types = np.random.choice(['raspberry_0', 'raspberry_2', 'raspberry_3', 'nano', 'xavier'],
                                         size=len(workers), replace=True)
@@ -108,7 +161,16 @@ class Federation:
         #                                    size=len(workers), replace=True)
         energy_policies = np.random.choice(['normal'],
                                            size=len(workers), replace=True)
-        workers = Federation.create_workers(workers, device_types, energy_policies, train_data, test_data, dataset)
+        loggers = [get_logger(node_type='worker',
+                              node_id=w,
+                              log_folder=os.path.join('logs',
+                                                      self.dataset,
+                                                      '{}_workers'.format(self.n_workers),
+                                                      'spw={}'.format(self.max_spw),
+                                                      'mode={}'.format(self.sampling_mode)))
+                   for w in workers]
+        workers = Federation.create_workers(workers, device_types, energy_policies,
+                                            train_data, test_data, self.dataset, loggers)
         return workers
 
     @staticmethod
@@ -122,3 +184,11 @@ class Federation:
         workers, _, train_data, test_data = read_data(train_data_dir, test_data_dir)
         assert len(workers) == n_workers
         return workers, train_data, test_data
+
+    def clean_previous_loggers(self):
+        log_folder = os.path.join('logs',
+                                  self.dataset,
+                                  '{}_workers'.format(self.n_workers),
+                                  'spw={}'.format(self.max_spw),
+                                  'mode={}'.format(self.sampling_mode))
+        shutil.rmtree(log_folder)
