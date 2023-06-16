@@ -19,10 +19,16 @@ class Trainer:
         assert dataset in ['femnist', 'sent140']
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.processing_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        print('Using a {} for training and inference!'.format(self.processing_device))
+        self.model = self.model.to(self.processing_device)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
+        self.train_data = None
+        self.val_data = None
+        self.test_data = None
         self.read_data_from_dir()
 
     def read_data_from_dir(self):
@@ -42,7 +48,7 @@ class Trainer:
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
         for i, f in enumerate(files):
-            print('Reading file {} out of {}'.format(i, len(files)), end='\r')
+            print('Reading file {} out of {}'.format(i+1, len(files)), end='\r')
             file_path = os.path.join(data_dir, f)
             with open(file_path, 'r') as inf:
                 cdata = json.load(inf)
@@ -52,25 +58,25 @@ class Trainer:
                     data['y'] += cdata['user_data'][user]['y']
         print()
         print('Splitting train and test files...')
-        X_train, X_test, y_train, y_test = train_test_split(data['x'],
+        x_train, x_test, y_train, y_test = train_test_split(data['x'],
                                                             data['y'],
                                                             test_size=0.33,
                                                             random_state=42)
         print('Gathering xs and ys on single dictionary...')
-        train_data = {'x': X_train, 'y': y_train}
-        test_data = {'x': X_test, 'y': y_test}
+        train_data = {'x': x_train, 'y': y_train}
+        test_data = {'x': x_test, 'y': y_test}
         return train_data, test_data
 
     def train(self, epochs=100, batch_size=10):
         print('--- Start training ---')
         for epoch in range(epochs):
+            print('===== | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ======='.format(epoch + 1, epochs,
+                                                                                     self.lr, batch_size))
             # Simulate server model training on selected clients' data
-            final_loss, _, _, _ = self.train_single_epoch(epoch=epoch,
-                                                          epochs=epochs,
-                                                          batch_size=batch_size)
-
+            final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
             # Test model
             _ = self.test_model(batch_size=batch_size)
+            print('============================================')
         print('--- Training finished! ---')
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
@@ -79,7 +85,7 @@ class Trainer:
         save_path = self.save_model(checkpoints_folder=ckpt_path)
         print('Model saved in path: %s' % save_path)
 
-    def train_single_epoch(self, epoch, epochs, batch_size=10):
+    def train_single_epoch(self, batch_size=10):
         start = time.time()
         self.model.train()
         running_loss = 0.
@@ -99,14 +105,13 @@ class Trainer:
             predictions += pred_labels.detach().cpu().numpy().tolist()
             labels_list += batch_label.detach().cpu().numpy().tolist()
             counter += 1
-            metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+            metrics = {'loss': running_loss / counter,
+                       'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                        'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-            self.print_message(epoch=epoch,
-                               epochs=epochs,
-                               index_train_batch=counter,
+            self.print_message(index_batch=counter,
                                batch_size=batch_size,
-                               train_loss=running_loss / counter,
-                               train_mets=metrics)
+                               metrics=metrics,
+                               mode='train')
         print()
         final_loss = running_loss / counter
         stop = time.time()
@@ -132,9 +137,10 @@ class Trainer:
                 counter += 1
                 metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-                self.print_test_message(index_batch=counter,
-                                        batch_size=batch_size,
-                                        metrics=metrics)
+                self.print_message(index_batch=counter,
+                                   batch_size=batch_size,
+                                   metrics=metrics,
+                                   mode='test')
             print()
             # Compute accuracy
             f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
@@ -148,8 +154,8 @@ class Trainer:
     def preprocess_input_output(self, batch_input, batch_output):
         if self.dataset == 'femnist':
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
-            inputs = inputs.type(torch.FloatTensor)
-            labels = torch.from_numpy(np.array(batch_output))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         elif self.dataset == 'sent140':
             try:
@@ -159,49 +165,33 @@ class Trainer:
                 _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
             x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
-            inputs = torch.from_numpy(np.array(x_batch))
-            labels = torch.from_numpy(np.array(batch_output))
+            inputs = torch.from_numpy(np.array(x_batch)).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
 
-    def print_message(self, epoch, epochs, index_train_batch, batch_size, train_loss, train_mets):
-        message = '| Epoch: {}/{} | LR: {:.5f} |'.format(epoch + 1,
-                                                         epochs,
-                                                         self.lr)
+    def print_message(self, index_batch, batch_size, metrics, mode='train'):
+        message = '|'
         bar_length = 10
-        total_train_batches = math.ceil(len(self.train_data['x']) / batch_size)
-        progress = float(index_train_batch) / float(total_train_batches)
-        if progress >= 1.:
-            progress = 1
-        block = int(round(bar_length * progress))
-        message += '[{}]'.format('=' * block + ' ' * (bar_length - block))
-        message += '| TRAIN: loss={:.5f} '.format(train_loss)
-        if train_mets is not None:
-            train_metrics_message = ''
-            for metric_name, metric_value in train_mets.items():
-                train_metrics_message += '{}={:.5f} '.format(metric_name,
-                                                             metric_value)
-            message += train_metrics_message
-        message += '|'
-        # message += 'Loss weights are: {}'.format(self.criterion_reg.weight.numpy())
-        print(message, end='\r')
-
-    def print_test_message(self, index_batch, batch_size, metrics):
-        message = '| '
-        bar_length = 10
-        total_batches = math.ceil(len(self.test_data['x']) / batch_size)
+        total_samples = len(self.train_data['x']) if mode == 'train' else len(
+            self.test_data) if mode == 'test' else len(self.val_data)
+        total_batches = math.ceil(total_samples / batch_size)
         progress = float(index_batch) / float(total_batches)
         if progress >= 1.:
             progress = 1
         block = int(round(bar_length * progress))
-        message += '[{}] | TEST: '.format('=' * block + ' ' * (bar_length - block))
+        message += '[{}]'.format('=' * block + ' ' * (bar_length - block))
+        message += '| {}: '.format(mode.upper())
         if metrics is not None:
-            metrics_message = ''
+            train_metrics_message = ''
+            index = 0
             for metric_name, metric_value in metrics.items():
-                metrics_message += '{}={:.5f} '.format(metric_name,
-                                                       metric_value)
-            message += metrics_message
+                train_metrics_message += '{}={:.5f}{} '.format(metric_name,
+                                                               metric_value,
+                                                               ',' if index < len(metrics.keys()) - 1 else '')
+                index += 1
+            message += train_metrics_message
         message += '|'
         print(message, end='\r')
 
@@ -209,6 +199,7 @@ class Trainer:
         # Save server model
         path = '{}/server_model.ckpt'.format(checkpoints_folder)
         torch.save(self.model, path)
+        return path
 
 
 def parse_args():

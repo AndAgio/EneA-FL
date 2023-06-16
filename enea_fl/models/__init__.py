@@ -21,6 +21,7 @@ class WorkerModel:
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
+        self.processing_device = 'cpu'
 
     @property
     def size(self):
@@ -113,8 +114,8 @@ class WorkerModel:
     def preprocess_input_output(self, batch_input, batch_output):
         if self.dataset == 'femnist':
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
-            inputs = inputs.type(torch.FloatTensor)
-            labels = torch.from_numpy(np.array(batch_output))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         elif self.dataset == 'sent140':
             try:
@@ -124,11 +125,15 @@ class WorkerModel:
                 _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
             x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
-            inputs = torch.from_numpy(np.array(x_batch))
-            labels = torch.from_numpy(np.array(batch_output))
+            inputs = torch.from_numpy(np.array(x_batch)).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
+
+    def move_model_to_device(self, processing_device):
+        self.processing_device = processing_device
+        self.model = self.model.to(self.processing_device)
 
 
 class ServerModel:
@@ -136,6 +141,7 @@ class ServerModel:
         assert dataset in ['femnist', 'sent140']
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.processing_device = 'cpu'
 
     @property
     def size(self):
@@ -157,3 +163,7 @@ class ServerModel:
     def get_weights(self):
         return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
                         dtype=object)
+
+    def move_model_to_device(self, processing_device):
+        self.processing_device = processing_device
+        self.model = self.model.to(self.processing_device)
