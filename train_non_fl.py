@@ -35,6 +35,7 @@ class Trainer:
         self.val_data = None
         self.test_data = None
         self.read_data_from_dir()
+        self.indexization = self.gather_indexization()
 
     def read_data_from_dir(self):
         self.logger.print_it('Reading data. This may take a while...')
@@ -162,23 +163,24 @@ class Trainer:
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         elif self.dataset == 'sent140':
-            start = time.time()
-            try:
-                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-            except FileNotFoundError:
-                _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-            stop = time.time()
-            self.logger.print_it('Time taken to get indd: {:.3f}'.format(stop-start))
             x_batch = [e[4] for e in batch_input]
-            x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
+            x_batch = [line_to_indices(e, self.indexization, max_words=SentConfig().max_sen_len) for e in x_batch]
             inputs = torch.from_numpy(np.array(x_batch)).type(torch.LongTensor).permute(1, 0).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
-            stop = time.time()
-            self.logger.print_it('Time taken to preprocess sentence: {:.3f}'.format(stop-start))
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
+
+    def gather_indexization(self):
+        start = time.time()
+        try:
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        except FileNotFoundError:
+            _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        stop = time.time()
+        self.logger.print_it('Time taken to get word indexization from json: {:.3f} s'.format(stop - start))
+        return indd
 
     def print_message(self, index_batch, batch_size, metrics, mode='train'):
         message = '|'

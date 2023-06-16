@@ -26,6 +26,7 @@ class WorkerModel:
         self.criterion = nn.CrossEntropyLoss()
         self.processing_device = 'cpu'
         self.logger = DumbLogger
+        self.indexization = self.gather_indexization()
 
     @property
     def size(self):
@@ -160,18 +161,24 @@ class WorkerModel:
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         elif self.dataset == 'sent140':
-            try:
-                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-            except FileNotFoundError:
-                _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-                _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
-            x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
+            x_batch = [line_to_indices(e, self.indexization, max_words=SentConfig().max_sen_len) for e in x_batch]
             inputs = torch.from_numpy(np.array(x_batch)).type(torch.LongTensor).permute(1, 0).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
+
+    def gather_indexization(self):
+        start = time.time()
+        try:
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        except FileNotFoundError:
+            _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        stop = time.time()
+        self.logger.print_it('Time taken to get word indexization from json: {:.3f} s'.format(stop - start))
+        return indd
 
     def move_model_to_device(self, processing_device):
         self.processing_device = processing_device
