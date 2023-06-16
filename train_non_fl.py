@@ -23,7 +23,7 @@ class Trainer:
         self.clean_previous_logger()
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
-        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu(self.logger)) if torch.cuda.is_available()
+        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
                                               else 'cpu')
         self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
         self.model = self.model.to(self.processing_device)
