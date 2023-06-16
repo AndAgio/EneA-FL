@@ -13,7 +13,10 @@ import sys
 
 from PIL import Image
 
-from data.utils import util
+try:
+    from data.utils import util
+except ModuleNotFoundError:
+    from .utils import util
 
 MAX_WRITERS = 100  # max number of writers per json file.
 
