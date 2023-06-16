@@ -96,6 +96,9 @@ class Trainer:
         labels_list = []
         for batch_input, batch_label in batch_data(self.train_data, batch_size):
             batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+            print('Model device: {}'.format(self.model.get_device()))
+            print('Input device: {}'.format(batch_input.get_device()))
+            print('Label device: {}'.format(batch_label.get_device()))
             self._optimizer.zero_grad()
             outputs = self.model(batch_input)
             loss = self.criterion(outputs, batch_label)
