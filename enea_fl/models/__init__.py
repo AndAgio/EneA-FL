@@ -167,7 +167,7 @@ class WorkerModel:
                 _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
             x_batch = [e[4] for e in batch_input]
             x_batch = [line_to_indices(e, indd, max_words=SentConfig().max_sen_len) for e in x_batch]
-            inputs = torch.from_numpy(np.array(x_batch)).to(self.processing_device)
+            inputs = torch.from_numpy(np.array(x_batch)).type(torch.LongTensor).permute(1, 0).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
         else:
