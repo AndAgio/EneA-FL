@@ -186,7 +186,7 @@ class Trainer:
         message = '|'
         bar_length = 10
         total_samples = len(self.train_data['x']) if mode == 'train' else len(
-            self.test_data) if mode == 'test' else len(self.val_data)
+            self.test_data['x']) if mode == 'test' else len(self.val_data['x'])
         total_batches = math.ceil(total_samples / batch_size)
         progress = float(index_batch) / float(total_batches)
         if progress >= 1.:
