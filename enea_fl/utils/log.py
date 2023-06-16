@@ -35,13 +35,13 @@ class DumbLogger:
 
     @staticmethod
     def print_it(msg, *args, **kwargs):
-        """Logging method for the SKEI4NLP level. The `msg` gets logged both to stdout and to file
+        """Logging method for the EneA_FL level. The `msg` gets logged both to stdout and to file
         (if a file handler is present), irrespective of verbosity settings."""
         return print(msg, *args, **kwargs)
 
     @staticmethod
     def print_it_same_line(msg, *args, **kwargs):
-        """Logging method for the SKEI4NLP level. The `msg` gets logged both to stdout and to file
+        """Logging method for the EneA_FL level. The `msg` gets logged both to stdout and to file
         (if a file handler is present), irrespective of verbosity settings."""
         return print(msg, end='\r', *args, **kwargs)
 
@@ -76,7 +76,7 @@ class SmartLogger(logging.getLoggerClass()):
         self.setLevel(logging.DEBUG)
 
         # Add new logging level
-        logging.addLevelName(logging.INFO, 'SKEI4NLP')
+        logging.addLevelName(logging.INFO, 'EneA_FL')
 
         # Determine verbosity settings
         self.verbose = verbose
@@ -152,12 +152,12 @@ class SmartLogger(logging.getLoggerClass()):
         self.stdout_handler.terminator = '\n'
 
     def print_it(self, msg, *args, **kwargs):
-        """Logging method for the SKEI4NLP level. The `msg` gets logged both to stdout and to file
+        """Logging method for the EneA_FL level. The `msg` gets logged both to stdout and to file
         (if a file handler is present), irrespective of verbosity settings."""
         return super().info(msg, *args, **kwargs)
 
     def print_it_same_line(self, msg, *args, **kwargs):
-        """Logging method for the SKEI4NLP level. The `msg` gets logged both to stdout and to file
+        """Logging method for the EneA_FL level. The `msg` gets logged both to stdout and to file
         (if a file handler is present), irrespective of verbosity settings."""
         self.set_logger_inline()
         return super().info(msg, *args, **kwargs)
