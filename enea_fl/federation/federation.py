@@ -36,7 +36,7 @@ class Federation:
 
     def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1):
         # Initial status
-        self.federation_logger.print_it('--- Random Initialization ---')
+        self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
         test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
                                               round_ind=0)
         print_metrics(logger=self.federation_logger,
@@ -52,9 +52,10 @@ class Federation:
 
         # Simulate training
         for round_ind in range(self.n_rounds):
-            self.federation_logger.print_it('--- Round {} of {}: Training {} workers ---'.format(round_ind + 1,
-                                                                                                 self.n_rounds,
-                                                                                                 clients_per_round))
+            self.federation_logger.print_it(' Round {} of {}: Training {} workers '.format(round_ind + 1,
+                                                                                           self.n_rounds,
+                                                                                           clients_per_round)
+                                            .center(60, '-'))
 
             # Simulate server model training on selected clients' data
             sys_metrics = self.server.train_model(num_workers=clients_per_round,
@@ -88,7 +89,7 @@ class Federation:
                                      metrics_dir='metrics',
                                      metrics_name='{}_{}'.format('federation', 'performance'))
 
-        self.federation_logger.print_it('--- Federation rounds finished! ---')
+        self.federation_logger.print_it(' Federation rounds finished! '.center(60, '-'))
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
         if not os.path.exists(ckpt_path):

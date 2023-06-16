@@ -73,26 +73,18 @@ class Trainer:
         return train_data, test_data
 
     def train(self, epochs=100, batch_size=10):
-        s_l = len(' Start training ')
-        self.logger.print_it('{} Start training {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
-                                                           ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
+        self.logger.print_it(' Start training '.center(60, '-'))
         for epoch in range(epochs):
-            s_l = len(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ')
-            self.logger.print_it('{} | Epoch: {}/{} | '
-                                 'LR = {:.5f} | '
-                                 'BATCH = {} | {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
-                                                          epoch + 1, epochs,
-                                                          self.lr, batch_size,
-                                                          ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
+            self.logger.print_it(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | '.format(epoch + 1,
+                                                                                        epochs,
+                                                                                        self.lr,
+                                                                                        batch_size).center(60, '-'))
             # Simulate server model training on selected clients' data
             final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
             # Test model
             _ = self.test_model(batch_size=batch_size)
-            self.logger.print_it('{}'.format(''.join(['-' for _ in range(20)])))
-        s_l = len(' Training finished! ')
-        self.logger.print_it(
-            '{} Training finished! {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
-                                              ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
+            self.logger.print_it(''.center(60, '-'))
+        self.logger.print_it(' Training finished! '.center(60, '-'))
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
         if not os.path.exists(ckpt_path):
