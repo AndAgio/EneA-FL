@@ -200,7 +200,8 @@ class Federation:
                                   '{}_workers'.format(self.n_workers),
                                   'spw={}'.format(self.max_spw),
                                   'mode={}'.format(self.sampling_mode))
-        shutil.rmtree(log_folder)
+        if os.path.exists(log_folder):
+            shutil.rmtree(log_folder)
 
     def gather_indexization(self):
         self.federation_logger.print_it('Reading word indexization from GloVe\'s json...')

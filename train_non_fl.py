@@ -214,7 +214,8 @@ class Trainer:
 
     def clean_previous_logger(self):
         log_folder = os.path.join('logs', self.dataset, 'non_fl')
-        shutil.rmtree(log_folder)
+        if os.path.exists(log_folder):
+            shutil.rmtree(log_folder)
 
 
 def parse_args():
