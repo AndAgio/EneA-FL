@@ -50,8 +50,9 @@ class WorkerModel:
         return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
                         dtype=object)
 
-    def train(self, train_data, train_steps=100, batch_size=10):
+    def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
         start = time.time()
+        self._optimizer.param_groups[0]['lr'] = lr
         self.model.train()
         predictions = []
         labels_list = []

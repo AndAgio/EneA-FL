@@ -32,7 +32,7 @@ class Server:
     def get_all_workers(self):
         return self.possible_workers
 
-    def train_model(self, num_workers=10, batch_size=10, round_ind=-1):
+    def train_model(self, num_workers=10, batch_size=10, lr=0.1, round_ind=-1):
         _ = self.select_workers(num_workers=num_workers)
         workers = self.selected_workers
         w_ids = self.get_clients_info(workers)
@@ -46,6 +46,7 @@ class Server:
         for w in workers:
             w.set_weights(self.model.get_weights())
             energy_used, time_taken, comp, num_samples = w.train(batch_size=batch_size,
+                                                                 lr=lr,
                                                                  round_ind=round_ind)
             sys_metrics[w.id]['bytes_read'] += w.model.size
             sys_metrics[w.id]['bytes_written'] += w.model.size

@@ -41,6 +41,7 @@ def main():
                                use_val_set=args.use_val_set)
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
+                      lr=args.lr,
                       eval_every=args.eval_every)
 
 

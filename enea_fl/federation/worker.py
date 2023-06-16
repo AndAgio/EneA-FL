@@ -30,12 +30,13 @@ class Worker:
         self.train_data = train_data
         self.eval_data = eval_data
 
-    def train(self, batch_size=10, round_ind=-1):
+    def train(self, batch_size=10, lr=0.1, round_ind=-1):
         self.logger.print_it('-------- Training model at round {} --------'.format(round_ind))
         train_steps = self.compute_local_energy_policy(batch_size=batch_size)
         energy_used, time_taken, comp = self.model.train(train_data=self.train_data,
                                                          train_steps=train_steps,
-                                                         batch_size=batch_size)
+                                                         batch_size=batch_size,
+                                                         lr=lr)
         num_train_samples = train_steps * batch_size
         return energy_used, time_taken, comp, num_train_samples
 

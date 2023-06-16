@@ -34,7 +34,7 @@ class Federation:
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         self.federation_logger.print_it('Federation initialized with {} workers!'.format(len(self.workers)))
 
-    def run(self, clients_per_round=10, batch_size=10, eval_every=1):
+    def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1):
         # Initial status
         self.federation_logger.print_it('--- Random Initialization ---')
         test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
@@ -59,6 +59,7 @@ class Federation:
             # Simulate server model training on selected clients' data
             sys_metrics = self.server.train_model(num_workers=clients_per_round,
                                                   batch_size=batch_size,
+                                                  lr=lr,
                                                   round_ind=round_ind + 1)
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
             write_metrics_to_csv(num_round=round_ind + 1,
