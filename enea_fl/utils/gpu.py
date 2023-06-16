@@ -1,19 +1,8 @@
-import subprocess
-try:
-    from StringIO import StringIO ## for Python 2
-except ImportError:
-    from io import StringIO ## for Python 3
-import pandas as pd
+import os
+import numpy as np
 
 
 def get_free_gpu(logger):
-    gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
-    logger.print_it('gpu_stats: {}'.format(gpu_stats))
-    gpu_df = pd.read_csv(StringIO(u"".join(gpu_stats)),
-                         names=['memory.used', 'memory.free'],
-                         skiprows=1)
-    logger.print_it('GPU usage:\n{}'.format(gpu_df))
-    gpu_df['memory.free'] = gpu_df['memory.free'].map(lambda x: x.rstrip(' [MiB]'))
-    idx = gpu_df['memory.free'].idxmax()
-    logger.print_it('Returning GPU{} with {} free MiB'.format(idx, gpu_df.iloc[idx]['memory.free']))
-    return idx
+    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+    memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+    return np.argmax(memory_available)

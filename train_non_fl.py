@@ -210,7 +210,7 @@ class Trainer:
         torch.save(self.model, path)
         return path
 
-    def clean_previous_loggers(self):
+    def clean_previous_logger(self):
         log_folder = os.path.join('logs', self.dataset, 'non_fl')
         shutil.rmtree(log_folder)
 
