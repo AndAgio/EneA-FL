@@ -53,7 +53,7 @@ class Trainer:
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
         for i, f in enumerate(files):
-            self.logger.print_it_same_line('Reading file {} out of {}'.format(i+1, len(files)))
+            self.logger.print_it_same_line('Reading file {} out of {}'.format(i + 1, len(files)))
             file_path = os.path.join(data_dir, f)
             with open(file_path, 'r') as inf:
                 cdata = json.load(inf)
@@ -73,16 +73,26 @@ class Trainer:
         return train_data, test_data
 
     def train(self, epochs=100, batch_size=10):
-        self.logger.print_it('--- Start training ---')
+        s_l = len(' Start training ')
+        self.logger.print_it('{} Start training {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
+                                                           ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
         for epoch in range(epochs):
-            self.logger.print_it('===== | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ======='.format(epoch + 1, epochs,
-                                                                                     self.lr, batch_size))
+            s_l = len(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | ')
+            self.logger.print_it('{} | Epoch: {}/{} | '
+                                 'LR = {:.5f} | '
+                                 'BATCH = {} | {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
+                                                          epoch + 1, epochs,
+                                                          self.lr, batch_size,
+                                                          ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
             # Simulate server model training on selected clients' data
             final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
             # Test model
             _ = self.test_model(batch_size=batch_size)
-            self.logger.print_it('============================================')
-        self.logger.print_it('--- Training finished! ---')
+            self.logger.print_it('{}'.format(''.join(['-' for _ in range(20)])))
+        s_l = len(' Training finished! ')
+        self.logger.print_it(
+            '{} Training finished! {}'.format(''.join(['-' for _ in range(math.floor((20 - s_l) / 2))]),
+                                              ''.join(['-' for _ in range(math.ceil((20 - s_l) / 2))])))
         # Save server model
         ckpt_path = os.path.join('checkpoints', self.dataset)
         if not os.path.exists(ckpt_path):
