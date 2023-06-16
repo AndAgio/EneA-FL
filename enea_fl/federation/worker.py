@@ -31,7 +31,7 @@ class Worker:
         self.eval_data = eval_data
 
     def train(self, batch_size=10, lr=0.1, round_ind=-1):
-        self.logger.print_it('-------- Training model at round {} --------'.format(round_ind))
+        self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
         train_steps = self.compute_local_energy_policy(batch_size=batch_size)
         energy_used, time_taken, comp = self.model.train(train_data=self.train_data,
                                                          train_steps=train_steps,
@@ -41,12 +41,12 @@ class Worker:
         return energy_used, time_taken, comp, num_train_samples
 
     def test_local(self, set_to_use='test', round_ind=-1):
-        self.logger.print_it('-------- Testing local model at round {} --------'.format(round_ind))
+        self.logger.print_it(' Testing local model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_my_model(test_data=data)
 
     def test_global(self, model_to_test, set_to_use='test', round_ind=-1):
-        self.logger.print_it('-------- Testing global model at round {} --------'.format(round_ind))
+        self.logger.print_it(' Testing global model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_final_model(final_model=model_to_test,
                                            test_data=data)

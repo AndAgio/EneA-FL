@@ -36,7 +36,7 @@ class Server:
         _ = self.select_workers(num_workers=num_workers)
         workers = self.selected_workers
         w_ids = self.get_clients_info(workers)
-        self.logger.print_it('---------- Round {} --------------'.format(round_ind))
+        self.logger.print_it(' Round {} '.format(round_ind).center(60, '-'))
         self.logger.print_it('Selected workers: {}'.format(w_ids))
         sys_metrics = {w.id: {'bytes_written': 0,
                               'bytes_read': 0,
@@ -56,7 +56,7 @@ class Server:
             update = w.get_weights()
             self.updates.append((num_samples, update))
         self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
-        self.logger.print_it('----------------------------------')
+        self.logger.print_it(''.center(60, '-'))
 
         return sys_metrics
 

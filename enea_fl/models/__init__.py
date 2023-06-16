@@ -195,7 +195,7 @@ class WorkerModel:
                                                                ',' if index < len(metrics.keys()) - 1 else '')
                 index += 1
             message += train_metrics_message
-        message += '|'
+        message += '|'.ljust(60)
         self.logger.print_it_same_line(message)
 
 
