@@ -15,10 +15,10 @@ class Server:
     def add_new_worker(self, worker):
         self.possible_workers.append(worker)
 
-    def select_workers(self, num_clients=20, policy='random'):
-        num_clients = min(num_clients, len(self.possible_workers))
+    def select_workers(self, num_workers=20, policy='random'):
+        num_workers = min(num_workers, len(self.possible_workers))
         if policy == 'random':
-            self.selected_workers = np.random.choice(self.possible_workers, num_clients, replace=False)
+            self.selected_workers = np.random.choice(self.possible_workers, num_workers, replace=False)
         elif policy == 'energy_aware':
             raise NotImplementedError('Policy not implemented yet!')  # TODO: Implement energy aware selection policy
         else:
@@ -32,8 +32,8 @@ class Server:
     def get_all_workers(self):
         return self.possible_workers
 
-    def train_model(self, batch_size=10, round_ind=-1):
-        self.select_workers()
+    def train_model(self, num_workers=10, batch_size=10, round_ind=-1):
+        _ = self.select_workers(num_workers=num_workers)
         workers = self.selected_workers
         w_ids = self.get_clients_info(workers)
         self.logger.print_it('---------- Round {} --------------'.format(round_ind))

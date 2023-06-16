@@ -56,7 +56,8 @@ class Federation:
                                                                                                  clients_per_round))
 
             # Simulate server model training on selected clients' data
-            sys_metrics = self.server.train_model(batch_size=batch_size,
+            sys_metrics = self.server.train_model(num_workers=clients_per_round,
+                                                  batch_size=batch_size,
                                                   round_ind=round_ind + 1)
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
             write_metrics_to_csv(num_round=round_ind + 1,
