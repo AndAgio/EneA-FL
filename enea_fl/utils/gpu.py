@@ -8,7 +8,8 @@ import pandas as pd
 
 def get_free_gpu(logger):
     gpu_stats = subprocess.check_output(["nvidia-smi", "--format=csv", "--query-gpu=memory.used,memory.free"])
-    gpu_df = pd.read_csv(StringIO(gpu_stats),
+    logger.print_it('gpu_stats: {}'.format(gpu_stats))
+    gpu_df = pd.read_csv(StringIO(u"".join(gpu_stats)),
                          names=['memory.used', 'memory.free'],
                          skiprows=1)
     logger.print_it('GPU usage:\n{}'.format(gpu_df))
