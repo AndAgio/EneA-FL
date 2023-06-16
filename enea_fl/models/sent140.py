@@ -20,7 +20,7 @@ class CnnSent(nn.Module):
                 embs = json.load(inf)
         vocab = embs['vocab']
         vocab_size = len(vocab)
-        word_embeddings = torch.from_numpy(np.array(embs['emba']))
+        word_embeddings = torch.from_numpy(np.array(embs['emba'])).type(torch.FloatTensor)
         word_embeddings_size = word_embeddings.shape[1]
         # Embedding Layer
         self.embeddings = nn.Embedding(vocab_size, word_embeddings_size)
@@ -44,7 +44,7 @@ class CnnSent(nn.Module):
         # Embed input to GloVe embeddings
         embedded_sent = self.embeddings(x)
         logger.print_it('embedded_sent device: {}'.format(embedded_sent.get_device()))
-        embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
+        embedded_sent = embedded_sent.permute(1, 2, 0)
         logger.print_it('embedded_sent device: {}'.format(embedded_sent.get_device()))
         # First convolution
         out1 = t_func.max_pool1d(t_func.relu(self.conv1(embedded_sent)), kernel_size=self.kernel_size1).squeeze(2)
