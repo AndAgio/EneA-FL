@@ -1,7 +1,7 @@
 import math
 import warnings
 import torch
-from enea_fl.utils import DumbLogger
+from enea_fl.utils import DumbLogger, get_free_gpu
 
 
 class Worker:
@@ -19,7 +19,8 @@ class Worker:
         self.id = worker_id
         self.device_type = device_type
         gpu = True if device_type in ['nano', 'jetson'] else False
-        self.processing_device = torch.device('cuda' if gpu and torch.cuda.is_available() else 'cpu')
+        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if gpu and torch.cuda.is_available()
+                                              else 'cpu')
         self.logger.print_it('Worker {} is running on a {} and using '
                              'a {} for training and inference!'.format(self.id,
                                                                        self.device_type,

@@ -26,8 +26,8 @@ class Federation:
                                                                     '{}_workers'.format(n_workers),
                                                                     'spw={}'.format(max_spw),
                                                                     'mode={}'.format(sampling_mode)))
-        self.federation_logger.print_it(
-            'Setting up federation for learning over {} in {} rounds'.format(dataset.upper(), n_rounds))
+        self.federation_logger.print_it('Setting up federation for learning '
+                                        'over {} in {} rounds'.format(dataset.upper(), n_rounds))
         self.workers = self.setup_workers()
         self.server = self.create_server()
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)

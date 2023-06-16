@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
 from enea_fl.models import CnnSent, CnnFemnist, SentConfig
-from enea_fl.utils import get_logger
+from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Trainer:
@@ -21,7 +21,7 @@ class Trainer:
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
-        self.processing_device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available() else 'cpu')
         self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
         self.model = self.model.to(self.processing_device)
         self.lr = lr
