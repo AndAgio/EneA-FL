@@ -6,7 +6,7 @@ def run_cmd(cmd):
     return out
 
 
-def get_free_gpu_indices(logger):
+def get_free_gpu(logger):
     out = run_cmd('nvidia-smi -q -d Memory | grep -A4 GPU')
     out = (out.split('\n'))[1:]
     out = [l for l in out if '--' not in l]
