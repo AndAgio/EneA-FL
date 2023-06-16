@@ -1,5 +1,6 @@
 import math
 import os
+import shutil
 import time
 import json
 import argparse
@@ -33,6 +34,7 @@ class Trainer:
         self.val_data = None
         self.test_data = None
         self.read_data_from_dir()
+        self.clean_previous_logger()
 
     def read_data_from_dir(self):
         self.logger.print_it('Reading data. This may take a while...')
@@ -207,6 +209,10 @@ class Trainer:
         path = '{}/server_model.ckpt'.format(checkpoints_folder)
         torch.save(self.model, path)
         return path
+
+    def clean_previous_loggers(self):
+        log_folder = os.path.join('logs', self.dataset, 'non_fl')
+        shutil.rmtree(log_folder)
 
 
 def parse_args():
