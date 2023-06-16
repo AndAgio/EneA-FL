@@ -19,6 +19,7 @@ from enea_fl.utils import get_logger, get_free_gpu
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01):
         assert dataset in ['femnist', 'sent140']
+        self.clean_previous_logger()
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
@@ -34,7 +35,6 @@ class Trainer:
         self.val_data = None
         self.test_data = None
         self.read_data_from_dir()
-        self.clean_previous_logger()
 
     def read_data_from_dir(self):
         self.logger.print_it('Reading data. This may take a while...')
