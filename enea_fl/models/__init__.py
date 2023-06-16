@@ -16,8 +16,11 @@ from enea_fl.utils import DumbLogger
 
 
 class WorkerModel:
-    def __init__(self, dataset='femnist', lr=0.01):
+    def __init__(self, dataset='femnist', indexization=None, lr=0.01):
         assert dataset in ['femnist', 'sent140']
+        if dataset == 'sent140' and indexization is None:
+            raise ValueError('Indexization should be a valid input when'
+                             ' constructing WorkerModel objects for the Sent140 task!')
         self.dataset = dataset
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
         self.lr = lr
@@ -26,7 +29,7 @@ class WorkerModel:
         self.criterion = nn.CrossEntropyLoss()
         self.processing_device = 'cpu'
         self.logger = DumbLogger
-        self.indexization = self.gather_indexization()
+        self.indexization = indexization
 
     @property
     def size(self):
@@ -168,17 +171,6 @@ class WorkerModel:
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
-
-    def gather_indexization(self):
-        start = time.time()
-        try:
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-        except FileNotFoundError:
-            _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-        stop = time.time()
-        self.logger.print_it('Time taken to get word indexization from json: {:.3f} s'.format(stop - start))
-        return indd
 
     def move_model_to_device(self, processing_device):
         self.processing_device = processing_device

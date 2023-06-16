@@ -7,6 +7,7 @@ from .server import Server
 from .worker import Worker
 from .utils import print_metrics, write_metrics_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
+from enea_fl.models.utils import get_word_emb_arr
 from enea_fl.utils import get_logger
 
 
@@ -95,13 +96,14 @@ class Federation:
         self.federation_logger.print_it('Model saved in path: {}'.format(save_path))
 
     @staticmethod
-    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset, loggers=None):
+    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset,
+                       loggers=None, indexization=None):
         workers = [Worker(worker_id=u,
                           device_type=device_types[i],
                           energy_policy=energy_policies[i],
                           train_data=train_data[u],
                           eval_data=test_data[u],
-                          model=WorkerModel(dataset),
+                          model=WorkerModel(dataset=dataset, indexization=indexization),
                           logger=loggers[i]) for i, u in enumerate(workers)]
         return workers
 
@@ -170,8 +172,12 @@ class Federation:
                                                       'spw={}'.format(self.max_spw),
                                                       'mode={}'.format(self.sampling_mode)))
                    for w in workers]
+        if self.dataset == 'sent140':
+            indexization = self.gather_indexization()
+        else:
+            indexization = None
         workers = Federation.create_workers(workers, device_types, energy_policies,
-                                            train_data, test_data, self.dataset, loggers)
+                                            train_data, test_data, self.dataset, loggers, indexization)
         return workers
 
     @staticmethod
@@ -193,3 +199,12 @@ class Federation:
                                   'spw={}'.format(self.max_spw),
                                   'mode={}'.format(self.sampling_mode))
         shutil.rmtree(log_folder)
+
+    def gather_indexization(self):
+        self.federation_logger.print_it('Reading word indexization from GloVe\'s json...')
+        try:
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        except FileNotFoundError:
+            _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+        return indd

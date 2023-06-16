@@ -172,14 +172,12 @@ class Trainer:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
 
     def gather_indexization(self):
-        start = time.time()
+        self.logger.print_it('Reading word indexization from GloVe\'s json...')
         try:
             _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
         except FileNotFoundError:
             _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
             _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-        stop = time.time()
-        self.logger.print_it('Time taken to get word indexization from json: {:.3f} s'.format(stop - start))
         return indd
 
     def print_message(self, index_batch, batch_size, metrics, mode='train'):
