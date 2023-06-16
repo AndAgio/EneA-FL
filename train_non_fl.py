@@ -35,7 +35,10 @@ class Trainer:
         self.val_data = None
         self.test_data = None
         self.read_data_from_dir()
-        self.indexization = self.gather_indexization()
+        if self.dataset == 'sent140':
+            self.indexization = self.gather_indexization()
+        else:
+            self.indexization = None
 
     def read_data_from_dir(self):
         self.logger.print_it('Reading data. This may take a while...')
