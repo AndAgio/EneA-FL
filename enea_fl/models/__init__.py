@@ -69,11 +69,7 @@ class WorkerModel:
             metrics = {'loss': running_loss / counter,
                        'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                        'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-            self.print_message(index_batch=counter,
-                               batch_size=batch_size,
-                               total_batches=train_steps,
-                               metrics=metrics,
-                               mode='train')
+            self.print_message(index_batch=counter, total_batches=train_steps, metrics=metrics, mode='train')
             if counter >= train_steps:
                 break
         final_loss = running_loss / counter
@@ -100,11 +96,8 @@ class WorkerModel:
                 metrics = {'loss': running_loss / counter,
                            'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-                self.print_message(index_batch=counter,
-                                   batch_size=batch_size,
-                                   total_batches=math.ceil(len(test_data['y'])/batch_size),
-                                   metrics=metrics,
-                                   mode='test local')
+                self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
+                                   metrics=metrics, mode='test local')
             return {'loss': running_loss / counter}
 
     def test_other_model(self, test_data, ids, other_model, results, batch_size=10):
@@ -125,11 +118,8 @@ class WorkerModel:
                 metrics = {'loss': running_loss / counter,
                            'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-                self.print_message(index_batch=counter,
-                                   batch_size=batch_size,
-                                   total_batches=math.ceil(len(test_data['y'])/batch_size),
-                                   metrics=metrics,
-                                   mode='test other')
+                self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
+                                   metrics=metrics, mode='test other')
             results[ids] = metrics
         return results
 
@@ -152,11 +142,8 @@ class WorkerModel:
                 metrics = {'loss': running_loss / counter,
                            'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-                self.print_message(index_batch=counter,
-                                   batch_size=batch_size,
-                                   total_batches=math.ceil(len(test_data['y'])/batch_size),
-                                   metrics=metrics,
-                                   mode='test global')
+                self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
+                                   metrics=metrics, mode='test global')
             # Compute accuracy
             f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
             accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
@@ -190,7 +177,7 @@ class WorkerModel:
         self.processing_device = processing_device
         self.model = self.model.to(self.processing_device)
 
-    def print_message(self, index_batch, batch_size, total_batches, metrics, mode='train'):
+    def print_message(self, index_batch, total_batches, metrics, mode='train'):
         message = '|'
         bar_length = 10
         progress = float(index_batch) / float(total_batches)

@@ -105,7 +105,7 @@ class Trainer:
             self.logger.print_it('Input device: {}'.format(batch_input.get_device()))
             self.logger.print_it('Label device: {}'.format(batch_label.get_device()))
             self._optimizer.zero_grad()
-            outputs = self.model(batch_input)
+            outputs = self.model(batch_input, logger=self.logger)
             loss = self.criterion(outputs, batch_label)
             loss.backward()
             self._optimizer.step()

@@ -39,8 +39,10 @@ class CnnSent(nn.Module):
         # Fully connected layer
         self.fc = nn.Linear(self.config.num_channels * len(self.config.kernel_size), self.config.output_size)
 
-    def forward(self, x):
+    def forward(self, x, logger=None):
         x = x.type(torch.LongTensor).permute(1, 0)
+        logger.print_it('Input device: {}'.format(x.get_device()))
+        logger.print_it('self.embeddings device: {}'.format(self.embeddings.get_device()))
         # Embed input to GloVe embeddings
         embedded_sent = self.embeddings(x)
         embedded_sent = embedded_sent.permute(1, 2, 0).type(torch.FloatTensor)
