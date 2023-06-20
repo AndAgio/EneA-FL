@@ -33,6 +33,12 @@ where the options represent the following:
 - lr: learning rate
 
 
+The command to run a single execution of training without federation (learning only locally on a single machine) is the following:
+```
+python train_non_fl.py --dataset="sent140" --epochs=100 --batch_size=10 --lr=0.1
+```
+where options are the same as above except epochs which defines the number of epochs used to train the model.
+
 #### Available and missing features
 
 This version contains the following features:
