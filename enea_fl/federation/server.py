@@ -1,6 +1,8 @@
 import numpy as np
 import random
 import torch
+from multiprocessing import Pool
+from joblib import Parallel, delayed
 from enea_fl.utils import DumbLogger
 
 
@@ -43,21 +45,24 @@ class Server:
                               'energy_used': 0,
                               'time_taken': 0,
                               'local_computations': 0} for w in workers}
-        for w in workers:
-            w.set_weights(self.model.get_weights())
-            energy_used, time_taken, comp, num_samples = w.train(batch_size=batch_size,
-                                                                 lr=lr,
-                                                                 round_ind=round_ind)
-            sys_metrics[w.id]['bytes_read'] += w.model.size
-            sys_metrics[w.id]['bytes_written'] += w.model.size
-            sys_metrics[w.id]['energy_used'] += energy_used
-            sys_metrics[w.id]['time_taken'] += time_taken
-            sys_metrics[w.id]['local_computations'] = comp
-            update = w.get_weights()
+
+        def train_worker(worker):
+            worker.set_weights(self.model.get_weights())
+            energy_used, time_taken, comp, num_samples = worker.train(batch_size=batch_size,
+                                                                      lr=lr,
+                                                                      round_ind=round_ind)
+            sys_metrics[worker.id]['bytes_read'] += worker.model.size
+            sys_metrics[worker.id]['bytes_written'] += worker.model.size
+            sys_metrics[worker.id]['energy_used'] += energy_used
+            sys_metrics[worker.id]['time_taken'] += time_taken
+            sys_metrics[worker.id]['local_computations'] = comp
+            update = worker.get_weights()
             self.updates.append((num_samples, update))
+
+        Parallel(n_jobs=len(workers), prefer="threads")(delayed(train_worker)(worker) for worker in workers)
+
         self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
         self.logger.print_it(''.center(60, '-'))
-
         return sys_metrics
 
     # FED AVERAGE LIKE AGGREGATION
@@ -83,10 +88,15 @@ class Server:
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers
-        for worker in workers_to_test:
+
+        def test_worker(worker):
             worker.set_weights(self.model.get_weights())
             c_metrics = worker.test_global(self.get_model(), set_to_use, round_ind=round_ind)
             metrics[worker.id] = c_metrics
+
+        Parallel(n_jobs=len(workers_to_test), prefer="threads")(delayed(test_worker)(worker)
+                                                                for worker in workers_to_test)
+
         return metrics
 
     def get_clients_info(self, workers):
