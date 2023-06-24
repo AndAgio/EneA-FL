@@ -19,11 +19,15 @@ from enea_fl.utils import get_logger, get_free_gpu
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01, batch_size=10):
         assert dataset in ['femnist', 'sent140']
+        self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
+        self.logger.print_it('Istantiating a Trainer object for {} dataset!'.format(dataset))
         self.dataset = dataset
         self.batch_size = batch_size
+        self.logger.print_it('Cleaning previous logger!')
         self.clean_previous_logger()
-        self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
+        self.logger.print_it('Istantiating a model!')
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.logger.print_it('Model: {}'.format(self.model))
         self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
                                               else 'cpu')
         self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
