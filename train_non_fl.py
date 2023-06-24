@@ -17,9 +17,10 @@ from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Trainer:
-    def __init__(self, dataset='femnist', lr=0.01):
+    def __init__(self, dataset='femnist', lr=0.01, batch_size=10):
         assert dataset in ['femnist', 'sent140']
         self.dataset = dataset
+        self.batch_size = batch_size
         self.clean_previous_logger()
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
@@ -39,6 +40,18 @@ class Trainer:
             self.indexization = self.gather_indexization()
         else:
             self.indexization = None
+
+        self.tot_flops = self.compute_total_number_of_flops()
+
+    def compute_total_number_of_flops(self):
+        total_flops = 0
+        for name, layer in self.model.named_children():
+            if isinstance(layer, nn.Linear):
+                total_flops += layer.in_features * layer.out_features * self.batch_size
+            elif isinstance(layer, nn.Conv1d):
+                total_flops += layer.in_channels * layer.out_channels * layer.kernel_size[0] * self.batch_size
+
+        return total_flops
 
     def read_data_from_dir(self):
         self.logger.print_it('Reading data. This may take a while...')
@@ -232,8 +245,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    my_trainer = Trainer(dataset=args.dataset,
-                         lr=args.lr)
+    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size)
     my_trainer.train(epochs=args.epochs,
                      batch_size=args.batch_size)
     my_trainer.save_model()

@@ -11,12 +11,12 @@ For each relevant computational component, count the number of floating-point op
 a) Convolutional layers:
 Each convolutional layer performs multiple multiplications and additions per output element. The number of FLOPS in a convolutional layer can be estimated as:
 ```
-FLOPS_conv = 2 * out_channels * in_channels * kernel_size * output_size
+FLOPS_conv1d = 1 * out_channels * in_channels * kernel_size * output_size * batch_size
 ```
 b) Fully connected layer:
 The fully connected layer performs matrix multiplication and addition operations. The number of FLOPS in the fully connected layer can be estimated as:
 ```
-FLOPS_fc = 2 * input_size * output_size
+FLOPS_fc = input_size * output_size * batch_size
 ```
 Sum up the FLOPS from all the relevant components to get the total number of FLOPS for the model.
 
