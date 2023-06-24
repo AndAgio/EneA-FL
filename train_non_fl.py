@@ -244,6 +244,7 @@ def parse_args():
 
 
 def main():
+    print("Parsing args...")
     args = parse_args()
     print("Creating trainer...")
     my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size)
