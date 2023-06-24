@@ -12,12 +12,14 @@ class CnnSent(nn.Module):
         super(CnnSent, self).__init__()
         self.config = SentConfig()
         try:
+            print("Loading GloVe embeddings [{}]...".format(self.config.embs_file))
             with open(self.config.embs_file, 'r') as inf:
                 embs = json.load(inf)
         except FileNotFoundError:
             _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
             with open(self.config.embs_file, 'r') as inf:
                 embs = json.load(inf)
+        print("Loaded GloVe embeddings.")
         vocab = embs['vocab']
         vocab_size = len(vocab)
         word_embeddings = torch.from_numpy(np.array(embs['emba'])).type(torch.FloatTensor)
