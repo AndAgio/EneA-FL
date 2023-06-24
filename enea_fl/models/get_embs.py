@@ -11,7 +11,7 @@ parser.add_argument('-f',
 args = parser.parse_args()
 
 lines = []
-with open(args.f, 'r') as inf:
+with open(args.f, 'r', encoding="utf-8") as inf:
     lines = inf.readlines()
 lines = [l.split() for l in lines]
 vocab = [l[0] for l in lines]
