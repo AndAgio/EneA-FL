@@ -1,0 +1,5 @@
+1) furcifer container
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea furcifer_base:latest
+
+2) bare torch container
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3 
