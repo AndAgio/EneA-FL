@@ -245,9 +245,12 @@ def parse_args():
 
 def main():
     args = parse_args()
+    print("Creating trainer...")
     my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size)
+    print("Training...")
     my_trainer.train(epochs=args.epochs,
                      batch_size=args.batch_size)
+    print("Saving model...")
     my_trainer.save_model()
 
 
