@@ -50,6 +50,8 @@ class Trainer:
                 total_flops += layer.in_features * layer.out_features * self.batch_size
             elif isinstance(layer, nn.Conv1d):
                 total_flops += layer.in_channels * layer.out_channels * layer.kernel_size[0] * self.batch_size
+            elif isinstance(layer, nn.Conv2d):
+                total_flops += 2 * layer.in_channels * layer.out_channels * layer.kernel_size[0] * self.batch_size
 
         return total_flops
 
