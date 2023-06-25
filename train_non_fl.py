@@ -71,8 +71,6 @@ class Trainer:
                                 shell=True)
             self.train_data, self.test_data = self.read_data(data_dir)
 
-        print('train_data: {}'.format(len(self.train_data['x'])))
-
     def read_data(self, data_dir):
         data = {'x': [], 'y': []}
         files = os.listdir(data_dir)
@@ -232,7 +230,7 @@ class Trainer:
                 index += 1
             message += train_metrics_message
         message += '|'.ljust(60)
-        self.logger.print_it(message)
+        self.logger.print_it_same_line(message)
 
     def save_model(self, checkpoints_folder='checkpoints'):
         # Save server model
@@ -245,6 +243,17 @@ class Trainer:
         if os.path.exists(log_folder):
             shutil.rmtree(log_folder)
 
+    def warm_up_model(self):
+        self.logger.print_it('Warming up model...')
+        self.model.train()
+        i = 0
+        for batch_input, batch_label in batch_data(self.train_data, 10):
+            if i == 1000:
+                break
+            batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+            self.model(batch_input)
+            i += 1
+        self.logger.print_it('Model warmed up!')
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -261,6 +270,7 @@ def main():
     args = parse_args()
     print("Creating trainer...")
     my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=args.iot)
+    my_trainer.warm_up_model()
     print("Training...")
     my_trainer.train(epochs=args.epochs,
                      batch_size=args.batch_size)
