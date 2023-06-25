@@ -202,10 +202,10 @@ class Trainer:
     def gather_indexization(self):
         self.logger.print_it('Reading word indexization from GloVe\'s json...')
         try:
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+            _, indd, _ = get_word_emb_arr(self.model.embs)
         except FileNotFoundError:
             _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+            _, indd, _ = get_word_emb_arr(self.model.embs)
         return indd
 
     def print_message(self, index_batch, batch_size, metrics, mode='train'):

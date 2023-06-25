@@ -19,6 +19,7 @@ class CnnSent(nn.Module):
             _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
             with open(self.config.embs_file, 'r') as inf:
                 embs = json.load(inf)
+        self.embs = embs
         print("Loaded GloVe embeddings.")
         vocab = embs['vocab']
         vocab_size = len(vocab)
