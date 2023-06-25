@@ -248,7 +248,7 @@ class Trainer:
         self.model.train()
         i = 0
         for batch_input, batch_label in batch_data(self.train_data, 10):
-            if i == 1000:
+            if i == 100:
                 break
             batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
             self.model(batch_input)
