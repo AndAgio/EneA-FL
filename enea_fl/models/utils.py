@@ -73,7 +73,7 @@ def get_word_emb_arr(path):
     with open(path, 'r') as inf:
         embs = json.load(inf)
     vocab = embs['vocab']
-    word_emb_arr = np.array(embs['emba'])
+    word_emb_arr = np.array(embs['emba'][:-1])
     indd = {}
     for i in range(len(vocab)):
         indd[vocab[i]] = i

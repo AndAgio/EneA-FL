@@ -17,12 +17,13 @@ from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Trainer:
-    def __init__(self, dataset='femnist', lr=0.01, batch_size=10):
+    def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True):
         assert dataset in ['femnist', 'sent140']
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.logger.print_it('Istantiating a Trainer object for {} dataset!'.format(dataset))
         self.dataset = dataset
         self.batch_size = batch_size
+        self.is_iot = is_iot
         self.logger.print_it('Cleaning previous logger!')
         self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
@@ -70,10 +71,15 @@ class Trainer:
                                 shell=True)
             self.train_data, self.test_data = self.read_data(data_dir)
 
+        print('train_data: {}'.format(len(self.train_data['x'])))
+
     def read_data(self, data_dir):
         data = {'x': [], 'y': []}
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
+        # if self.is_iot:
+        #     self.logger.print_it('[iot mode] Using only one file for training!')
+        #     files = files[:1]
         for i, f in enumerate(files):
             self.logger.print_it_same_line('Reading file {} out of {}'.format(i + 1, len(files)))
             file_path = os.path.join(data_dir, f)
@@ -244,6 +250,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
     parser.add_argument('--epochs', help='number of epochs;', type=int, default=100)
+    parser.add_argument('--iot', help='number of epochs;', type=bool, default=True)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()
@@ -253,7 +260,7 @@ def main():
     print("Parsing args...")
     args = parse_args()
     print("Creating trainer...")
-    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size)
+    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=args.iot)
     print("Training...")
     my_trainer.train(epochs=args.epochs,
                      batch_size=args.batch_size)
