@@ -79,6 +79,7 @@ def read_data(train_data_dir, test_data_dir):
 #         indd[vocab[i]] = i
 #     vocab = {w: i for i, w in enumerate(embs['vocab'])}
 #     return word_emb_arr, indd, vocab
+
 def get_word_emb_arr(embs):
     print('Loaded word embeddings')
     vocab = embs['vocab']

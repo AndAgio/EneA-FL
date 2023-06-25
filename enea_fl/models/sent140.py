@@ -23,7 +23,6 @@ class CnnSent(nn.Module):
         print("Loaded GloVe embeddings.")
         vocab = embs['vocab']
         vocab_size = len(vocab)
-        print("Vocab size: {}".format(vocab_size))
         word_embeddings = torch.from_numpy(np.array(embs['emba'])).type(torch.FloatTensor)
         word_embeddings_size = word_embeddings.shape[1]
         # Embedding Layer
