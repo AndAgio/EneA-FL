@@ -95,7 +95,6 @@ def get_word_emb_arr(embs):
 def split_line(line):
     return re.findall(r"[\w']+|[.,!?;]", line)
 
-
 def line_to_indices(line, word2id, max_words=25):
     unk_id = len(word2id)
     line_list = split_line(line)  # split phrase in words

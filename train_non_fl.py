@@ -82,7 +82,7 @@ class Trainer:
             self.logger.print_it_same_line('Reading file {} out of {}'.format(i + 1, len(files)))
             file_path = os.path.join(data_dir, f)
             self.logger.print_it("file_path: {}".format(file_path))
-            with open(file_path, 'r') as inf:
+            with open(file_path, 'r', encoding="utf-8") as inf:
                 cdata = json.load(inf)
                 users = [user for user, _ in cdata['user_data'].items()]
                 for user in users:
