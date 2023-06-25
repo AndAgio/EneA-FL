@@ -232,7 +232,7 @@ class Trainer:
                 index += 1
             message += train_metrics_message
         message += '|'.ljust(60)
-        self.logger.print_it_same_line(message)
+        self.logger.print_it(message)
 
     def save_model(self, checkpoints_folder='checkpoints'):
         # Save server model
