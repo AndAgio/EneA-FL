@@ -77,9 +77,9 @@ class Trainer:
         data = {'x': [], 'y': []}
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
-        # if self.is_iot:
-        #     self.logger.print_it('[iot mode] Using only one file for training!')
-        #     files = files[:1]
+        if self.is_iot:
+            self.logger.print_it('[iot mode] Using only one file for training!')
+            files = files[:1]
         for i, f in enumerate(files):
             self.logger.print_it_same_line('Reading file {} out of {}'.format(i + 1, len(files)))
             file_path = os.path.join(data_dir, f)
