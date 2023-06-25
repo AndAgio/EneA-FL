@@ -32,4 +32,5 @@ class CnnFemnist(nn.Module):
         x = x.view(-1, self.config.lin_channels[0])
         x = self.fc1(x)
         x = t_func.relu(x)
+        print("done with fc1")
         return t_func.softmax(self.fc2(x), dim=1)
