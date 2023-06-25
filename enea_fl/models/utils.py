@@ -72,12 +72,15 @@ def read_data(train_data_dir, test_data_dir):
 def get_word_emb_arr(path):
     with open(path, 'r') as inf:
         embs = json.load(inf)
+    print('Loaded word embeddings')
     vocab = embs['vocab']
     word_emb_arr = np.array(embs['emba'])
     indd = {}
+    print('Building index')
     for i in range(len(vocab)):
         indd[vocab[i]] = i
     vocab = {w: i for i, w in enumerate(embs['vocab'])}
+    print('Done')
     return word_emb_arr, indd, vocab
 
 def split_line(line):
