@@ -270,7 +270,6 @@ def parse_args():
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()
 
-
 def main():
     print("Parsing args...")
     args = parse_args()
