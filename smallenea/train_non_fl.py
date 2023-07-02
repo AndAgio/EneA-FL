@@ -172,6 +172,8 @@ class Trainer:
             for batch_input, batch_label in batch_data(self.test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 output = self.model(batch_input)
+                # parse batch_label to long (raspberry pi)
+                batch_label = batch_label.long()
                 running_loss += self.criterion(output, batch_label).item()
                 # preds_softmax = torch.nn.functional.softmax(output, dim=1)
                 pred_labels = torch.argmax(output, dim=1)
