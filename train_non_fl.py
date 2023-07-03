@@ -134,6 +134,7 @@ class Trainer:
         counter = 0.
         predictions = []
         labels_list = []
+        print("sum(1 for _ in gen)", sum(1 for _ in batch_data(self.train_data, batch_size)))
         for batch_input, batch_label in batch_data(self.train_data, batch_size):
             batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
             self._optimizer.zero_grad()
