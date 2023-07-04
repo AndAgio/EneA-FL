@@ -1,14 +1,11 @@
-1) furcifer container
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea furcifer_base:latest
+1) jetson nano
+BIG DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/EneA-FL:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=100 --batch_size=10 --lr=0.1 --test_size=0.1
+SMALL DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/EneA-FL:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=100 --batch_size=10 --lr=0.1 --test_size=0.6
 
-2) bare torch container
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3 
-
-3) full container (jetson nano)
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea nvcr.io/nvidia/l4t-ml:r32.7.1-py3
-
-4)full container raspberry
+2)full container raspberry
 sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea enea_ml:raspberrypi4
 
-5)full container jetson orin
+3)full container jetson orin
 sudo docker run -it --rm --runtime nvidia -v /home/orin/Documents/smallenea:/enea --network host nvcr.io/nvidia/l4t-ml:r35.2.1-py3
