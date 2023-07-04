@@ -48,6 +48,7 @@ class Trainer:
             self.indexization = None
 
         self.epoch_timestamps = []
+        self.sample_per_epochs = []
 
     def choose_device(self):
         chosen_device =  torch.device('cpu')
@@ -114,6 +115,7 @@ class Trainer:
 
     def train(self, epochs=100, batch_size=10):
         self.logger.print_it(' Start training '.center(60, '-'))
+        self.epoch_timestamps.append(time.time())
         for epoch in range(epochs):
             self.logger.print_it(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | '.format(epoch + 1,
                                                                                         epochs,
@@ -161,6 +163,7 @@ class Trainer:
         self.logger.set_logger_newline()
         final_loss = running_loss / counter
         stop = time.time()
+        self.sample_per_epochs.append(counter)
         energy = 0.  # TODO: find how to compute energy here
         comp = 0.  # TODO: find how to compute flops of model
         return final_loss, energy, stop - start, comp
@@ -294,6 +297,9 @@ def main():
                      batch_size=args.batch_size)
     print("----------------- my_trainer.epoch_timestamps -----------------")
     for i, e in enumerate(my_trainer.epoch_timestamps):
+        print(i, ")", e)
+    print("----------------- my_trainer.sample_per_epochs -----------------")
+    for i, e in enumerate(my_trainer.sample_per_epochs):
         print(i, ")", e)
     print("-------------------------")
     print("Done!")
