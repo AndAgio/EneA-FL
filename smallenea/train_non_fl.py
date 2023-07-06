@@ -17,20 +17,21 @@ from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Trainer:
-    def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True):
+    def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True, test_size=0.33, cpu=False):
         assert dataset in ['femnist', 'sent140']
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.logger.print_it('Istantiating a Trainer object for {} dataset!'.format(dataset))
         self.dataset = dataset
         self.batch_size = batch_size
         self.is_iot = is_iot
+        self.test_size = test_size
+        self.cpu = cpu
         self.logger.print_it('Cleaning previous logger!')
         self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
         self.logger.print_it('Model: {}'.format(self.model))
-        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
-                                              else 'cpu')
+        self.processing_device = self.choose_device()
         self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
         self.model = self.model.to(self.processing_device)
         self.lr = lr
@@ -46,7 +47,16 @@ class Trainer:
         else:
             self.indexization = None
 
-        self.tot_flops = self.compute_total_number_of_flops()
+        self.epoch_timestamps = []
+        self.sample_per_epochs = []
+
+    def choose_device(self):
+        chosen_device =  torch.device('cpu')
+        if not self.cpu:
+            chosen_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
+                                else 'cpu')
+        self.logger.print_it('Chosen device: {}'.format(chosen_device))
+        return chosen_device
 
     def compute_total_number_of_flops(self):
         total_flops = 0
@@ -75,6 +85,7 @@ class Trainer:
         data = {'x': [], 'y': []}
         files = os.listdir(data_dir)
         files = [f for f in files if f.endswith('.json')]
+        self.logger.print_it('[test_size] {}'.format(self.test_size))
         if self.is_iot:
             self.logger.print_it('[iot mode] Using less data for training!')
             if self.dataset == 'sent140':
@@ -95,7 +106,7 @@ class Trainer:
         self.logger.print_it('Splitting train and test files...')
         x_train, x_test, y_train, y_test = train_test_split(data['x'],
                                                             data['y'],
-                                                            test_size=0.33,
+                                                            test_size=self.test_size,
                                                             random_state=42)
         self.logger.print_it('Gathering xs and ys on single dictionary...')
         train_data = {'x': x_train, 'y': y_train}
@@ -104,6 +115,7 @@ class Trainer:
 
     def train(self, epochs=100, batch_size=10):
         self.logger.print_it(' Start training '.center(60, '-'))
+        self.epoch_timestamps.append(time.time())
         for epoch in range(epochs):
             self.logger.print_it(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | '.format(epoch + 1,
                                                                                         epochs,
@@ -115,22 +127,15 @@ class Trainer:
             except Exception as e:
                 self.logger.print_it('Error during training: {}'.format(e))
                 continue
-            # Test model
-            _ = self.test_model(batch_size=batch_size)
             self.logger.print_it(''.center(60, '-'))
+            self.epoch_timestamps.append(time.time())
         self.logger.print_it(' Training finished! '.center(60, '-'))
-        # Save server model
-        ckpt_path = os.path.join('checkpoints', self.dataset)
-        if not os.path.exists(ckpt_path):
-            os.makedirs(ckpt_path)
-        save_path = self.save_model(checkpoints_folder=ckpt_path)
-        self.logger.print_it('Model saved in path: %s' % save_path)
+
 
     def train_single_epoch(self, batch_size=10):
         start = time.time()
         self.model.train()
         running_loss = 0.
-        last_loss = 0.
         counter = 0.
         predictions = []
         labels_list = []
@@ -158,6 +163,7 @@ class Trainer:
         self.logger.set_logger_newline()
         final_loss = running_loss / counter
         stop = time.time()
+        self.sample_per_epochs.append(counter)
         energy = 0.  # TODO: find how to compute energy here
         comp = 0.  # TODO: find how to compute flops of model
         return final_loss, energy, stop - start, comp
@@ -273,7 +279,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
     parser.add_argument('--epochs', help='number of epochs;', type=int, default=100)
+    parser.add_argument('--test_size', help='test size;', type=float, default=0.33)
     parser.add_argument('--iot', help='number of epochs;', type=bool, default=True)
+    parser.add_argument('--cpu', help='number of epochs;', type=bool, default=False)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()
@@ -282,13 +290,20 @@ def main():
     print("Parsing args...")
     args = parse_args()
     print("Creating trainer...")
-    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=args.iot)
+    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=args.iot, test_size=args.test_size, cpu=args.cpu)
     my_trainer.warm_up_model()
     print("Training...")
     my_trainer.train(epochs=args.epochs,
                      batch_size=args.batch_size)
-    print("Saving model...")
-    my_trainer.save_model()
+    print("----------------- my_trainer.epoch_timestamps -----------------")
+    for i, e in enumerate(my_trainer.epoch_timestamps):
+        print(i, ")", e)
+    print("----------------- my_trainer.sample_per_epochs -----------------")
+    for i, e in enumerate(my_trainer.sample_per_epochs):
+        print(i, ")", e)
+    print("-------------------------")
+    print("Done!")
+    print("-------------------------")
 
 
 if __name__ == '__main__':

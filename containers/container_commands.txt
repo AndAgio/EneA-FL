@@ -1,14 +1,54 @@
-1) furcifer container
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea furcifer_base:latest
+1a) jetson nano (gpu)
+BIG DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25
+MEDIUM DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5
+SMALL DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75
 
-2) bare torch container
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3 
+1b) jetson nano (cpu)
+BIG DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+MEDIUM DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+SMALL DATA
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
+sudo docker run --rm -it --network host --runtime=nvidia --gpus all -v /home/jetson/Documents/smallenea:/enea --workdir /enea  --entrypoint /usr/bin/python3  nvcr.io/nvidia/l4t-ml:r32.7.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
 
-3) full container (jetson nano)
-sudo docker run --rm -it --network host --runtime=nvidia --gpus all   -v /home/jetson/Documents/EneA-FL:/enea nvcr.io/nvidia/l4t-ml:r32.7.1-py3
+2) raspberry (only cpu)
+BIG DATA
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+MEDIUM DATA
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+SMALL DATA
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
+sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 enea_ml:raspberrypi4 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
 
-4)full container raspberry
-sudo docker run --rm -it --network host -v /home/pi/workspace/smallenea:/enea enea_ml:raspberrypi4
+3a) jetson orin (gpu)
+BIG DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25
+MEDIUM DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5
+SMALL DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75
 
-5)full container jetson orin
-sudo docker run -it --rm --runtime nvidia -v /home/orin/Documents/smallenea:/enea --network host nvcr.io/nvidia/l4t-ml:r35.2.1-py3
+3b) jetson orin (cpu)
+BIG DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.25 --cpu=True
+MEDIUM DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.5 --cpu=True
+SMALL DATA
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="sent140" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
+sudo docker run -it --rm --network host --runtime nvidia -v /home/orin/Documents/smallenea:/enea --workdir /enea --entrypoint /usr/bin/python3 nvcr.io/nvidia/l4t-ml:r35.2.1-py3 /enea/train_non_fl.py --dataset="femnist" --epochs=5 --batch_size=10 --lr=0.1 --test_size=0.75 --cpu=True
