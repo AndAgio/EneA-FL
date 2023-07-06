@@ -51,13 +51,11 @@ class WorkerModel:
                         dtype=object)
 
     def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
-        start = time.time()
         self._optimizer.param_groups[0]['lr'] = lr
         self.model.train()
         predictions = []
         labels_list = []
         running_loss = 0.
-        last_loss = 0.
         counter = 0
         for batch_input, batch_label in batch_data(train_data, batch_size):
             batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
@@ -67,6 +65,7 @@ class WorkerModel:
             loss.backward()
             self._optimizer.step()
             running_loss += loss.item()
+            last_loss = loss.item()
             counter += 1
             pred_labels = torch.argmax(outputs, dim=1)
             predictions += pred_labels.detach().cpu().numpy().tolist()
@@ -78,10 +77,7 @@ class WorkerModel:
             if counter >= train_steps:
                 break
         final_loss = running_loss / counter
-        stop = time.time()
-        energy = 0.  # TODO: find how to compute energy here
-        comp = 0.  # TODO: find how to compute flops of model
-        return energy, stop - start, comp
+        return metrics
 
     def test_my_model(self, test_data, batch_size=10):
         self.model.eval()
@@ -200,9 +196,13 @@ class WorkerModel:
 
 
 class ServerModel:
-    def __init__(self, dataset='femnist'):
+    def __init__(self, dataset='femnist', indexization=None):
         assert dataset in ['femnist', 'sent140']
+        if dataset == 'sent140' and indexization is None:
+            raise ValueError('Indexization should be a valid input when'
+                             ' constructing WorkerModel objects for the Sent140 task!')
         self.dataset = dataset
+        self.indexization = indexization
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
         self.processing_device = 'cpu'
 
@@ -230,3 +230,35 @@ class ServerModel:
     def move_model_to_device(self, processing_device):
         self.processing_device = processing_device
         self.model = self.model.to(self.processing_device)
+
+    def test(self, test_data, batch_size=10):
+        predictions = []
+        labels_list = []
+        self.model.eval()
+        with torch.no_grad():
+            for batch_input, batch_label in batch_data(test_data, batch_size):
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                output = self.model(batch_input)
+                preds_softmax = torch.nn.functional.softmax(output, dim=1)
+                pred_labels = torch.argmax(preds_softmax, dim=1)
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
+            # Compute accuracy
+            f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
+            accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
+        return {'accuracy': accuracy, 'f1': f1}
+
+    def preprocess_input_output(self, batch_input, batch_output):
+        if self.dataset == 'femnist':
+            inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
+        elif self.dataset == 'sent140':
+            x_batch = [e[4] for e in batch_input]
+            x_batch = [line_to_indices(e, self.indexization, max_words=SentConfig().max_sen_len) for e in x_batch]
+            inputs = torch.from_numpy(np.array(x_batch)).type(torch.LongTensor).permute(1, 0).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
+        else:
+            raise ValueError('Dataset "{}" is not available!'.format(self.dataset))

@@ -23,6 +23,10 @@ def parse_args():
     parser.add_argument('--metrics_name', help='name for metrics file;', type=str, default='metrics', required=False)
     parser.add_argument('--use_val_set', help='use validation set;', action='store_true')
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
+
+    parser.add_argument('--alpha', help='alpha parameter;', type=float, default=0.5, required=False)
+    parser.add_argument('--beta', help='beta parameter;', type=float, default=0.5, required=False)
+    parser.add_argument('--k', help='k parameter;', type=float, default=0.9, required=False)
     return parser.parse_args()
 
 
@@ -42,7 +46,10 @@ def main():
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
                       lr=args.lr,
-                      eval_every=args.eval_every)
+                      eval_every=args.eval_every,
+                      alpha=args.alpha,
+                      beta=args.beta,
+                      k=args.k)
 
 
 if __name__ == '__main__':
