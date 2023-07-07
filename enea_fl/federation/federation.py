@@ -164,7 +164,7 @@ class Federation:
                                                             eval_set=eval_set)
         return Server(server_model=ServerModel(self.dataset, indexization=indexization),
                       possible_workers=self.workers,
-                      test_data=test_data,
+                      test_data=test_data['0'],
                       logger=logger)
 
     def setup_workers(self):
@@ -172,11 +172,11 @@ class Federation:
         eval_set = 'test' if not self.use_val_set else 'val'
         try:
             self.federation_logger.print_it('Trying to read data from files...')
-            workers, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
-                                                                           n_workers=self.n_workers,
-                                                                           sampling_mode=self.sampling_mode,
-                                                                           max_spw=self.max_spw,
-                                                                           eval_set=eval_set)
+            workers_ids, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
+                                                                               n_workers=self.n_workers,
+                                                                               sampling_mode=self.sampling_mode,
+                                                                               max_spw=self.max_spw,
+                                                                               eval_set=eval_set)
         except (FileNotFoundError, AssertionError) as error:
             self.federation_logger.print_it('Files not found, processing data...')
             sf = 0.1 if self.dataset == 'femnist' else 1
@@ -200,17 +200,17 @@ class Federation:
                                                                   sf),
                                 cwd=dataset_dir,
                                 shell=True)
-            workers, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
-                                                                           n_workers=self.n_workers,
-                                                                           sampling_mode=self.sampling_mode,
-                                                                           max_spw=self.max_spw,
-                                                                           eval_set=eval_set)
-        device_types = np.random.choice(['raspberry', 'nano', 'orin'],
-                                        size=len(workers), replace=True)
+            workers_ids, train_data, test_data = Federation.read_data_from_dir(dataset=self.dataset,
+                                                                               n_workers=self.n_workers,
+                                                                               sampling_mode=self.sampling_mode,
+                                                                               max_spw=self.max_spw,
+                                                                               eval_set=eval_set)
+        device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu', 'orin_cpu', 'orin_gpu'],
+                                        size=len(workers_ids), replace=True)
         # energy_policies = np.random.choice(['normal', 'conservative', 'extreme'],
         #                                    size=len(workers), replace=True)
         energy_policies = np.random.choice(['normal'],
-                                           size=len(workers), replace=True)
+                                           size=len(workers_ids), replace=True)
         loggers = [get_logger(node_type='worker',
                               node_id=w,
                               log_folder=os.path.join('logs',
@@ -218,13 +218,19 @@ class Federation:
                                                       '{}_workers'.format(self.n_workers),
                                                       'spw={}'.format(self.max_spw),
                                                       'mode={}'.format(self.sampling_mode)))
-                   for w in workers]
+                   for w in workers_ids]
         if self.dataset == 'sent140':
             indexization = self.gather_indexization()
         else:
             indexization = None
-        workers = Federation.create_workers(workers, device_types, energy_policies,
+        workers = Federation.create_workers(workers_ids, device_types, energy_policies,
                                             train_data, test_data, self.dataset, loggers, indexization)
+
+        for i, u in enumerate(workers_ids):
+            self.federation_logger.print_it('Device {} is a {} '
+                                            'with {} local energy policy'.format(u,
+                                                                                 device_types[i].upper(),
+                                                                                 energy_policies[i].upper()))
         return workers
 
     @staticmethod

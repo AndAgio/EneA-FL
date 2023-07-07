@@ -1,9 +1,23 @@
 
 
-def tot_samples_dataset(dataset='femnist'):
+def tot_samples_dataset(dataset='femnist', size='small'):
     if dataset == 'femnist':
-        return 1000
+        if size == 'small':
+            return 438
+        elif size == 'medium':
+            return 876
+        elif size == 'big':
+            return 1314
+        else:
+            raise ValueError('Size "{}" is not available for dataset "{}"!'.format(size, dataset))
     elif dataset == 'sent140':
-        return 500
+        if size == 'small':
+            return 291
+        elif size == 'medium':
+            return 582
+        elif size == 'big':
+            return 872
+        else:
+            raise ValueError('Size "{}" is not available for dataset "{}"!'.format(size, dataset))
     else:
         raise ValueError('Dataset "{}" is not available'.format(dataset))

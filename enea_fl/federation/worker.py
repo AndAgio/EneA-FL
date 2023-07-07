@@ -1,15 +1,15 @@
 import math
 import torch
 import numpy as np
-from enea_fl.utils import DumbLogger, get_free_gpu, compute_total_number_of_flops,\
-    read_device_behaviours, average_behaviours, compute_avg_std_time_per_sample
+from enea_fl.utils import DumbLogger, get_free_gpu, compute_total_number_of_flops, \
+    read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
 from enea_fl.models import CnnFemnist
 
 
 class Worker:
     def __init__(self,
                  worker_id,
-                 device_type='raspberry',
+                 device_type='raspberrypi',
                  energy_policy='normal',
                  train_data={'x': [], 'y': []},
                  eval_data={'x': [], 'y': []},
@@ -20,9 +20,9 @@ class Worker:
         self._model.set_logger(logger)
         self.id = worker_id
         self.device_type = device_type
-        gpu = True if device_type in ['nano', 'jetson'] else False
+        # gpu = True if device_type in ['nano', 'jetson'] else False
         self.processing_device = torch.device('cuda:{}'.format(get_free_gpu())
-                                              if gpu and torch.cuda.is_available() else 'cpu')
+                                              if torch.cuda.is_available() else 'cpu')
         self.logger.print_it('Worker {} is running on a {} and using '
                              'a {} for training and inference!'.format(self.id,
                                                                        self.device_type,
@@ -41,7 +41,7 @@ class Worker:
                                    lr=lr)
         num_train_samples = train_steps * batch_size
         energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
-        comp = compute_total_number_of_flops(model=self.model,
+        comp = compute_total_number_of_flops(model=self.model.model,
                                              batch_size=batch_size)
 
         return energy_used, time_taken, comp, num_train_samples
@@ -50,14 +50,17 @@ class Worker:
         dataset = 'femnist' if isinstance(self.model.model, CnnFemnist) else 'sent140'
         device_behaviour_files = read_device_behaviours(device_type=self.device_type,
                                                         dataset=dataset)
-        average_behaviour = average_behaviours(device_behaviour_files)
-        avg_time_per_sample, std_time_per_sample = compute_avg_std_time_per_sample(device_behaviour_files)
+        dataset_size = len(self.train_data['y'])
+        avg_energy, std_energy = get_average_energy(device_behaviour_files,
+                                                    dataset_size=dataset_size,
+                                                    dataset=dataset)
+        avg_time_per_sample, std_time_per_sample = compute_avg_std_time_per_sample(device_behaviour_files,
+                                                                                   dataset_size=dataset_size,
+                                                                                   dataset=dataset)
         tot_energy = 0.
         tot_time = 0.
         for i in range(n_samples):
-            sample_avg_energy = average_behaviour['energon_total_in_power_mW_avg'][i]
-            sample_std_energy = average_behaviour['energon_total_in_power_mW_std'][i]
-            sample_energy = np.random.normal(sample_avg_energy, sample_std_energy)
+            sample_energy = np.random.normal(avg_energy, std_energy)
             sample_time = np.random.normal(avg_time_per_sample, std_time_per_sample)
             tot_energy += sample_energy * sample_time
             tot_time += sample_time

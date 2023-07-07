@@ -12,7 +12,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from sklearn.metrics import f1_score, accuracy_score
-from enea_fl.utils import DumbLogger
+from enea_fl.utils import DumbLogger, get_free_gpu
 
 
 class WorkerModel:
@@ -27,7 +27,8 @@ class WorkerModel:
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
-        self.processing_device = 'cpu'
+        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu())
+                                              if torch.cuda.is_available() else 'cpu')
         self.logger = DumbLogger
         self.indexization = indexization
 
@@ -204,7 +205,8 @@ class ServerModel:
         self.dataset = dataset
         self.indexization = indexization
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
-        self.processing_device = 'cpu'
+        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu())
+                                              if torch.cuda.is_available() else 'cpu')
 
     @property
     def size(self):
