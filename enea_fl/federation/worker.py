@@ -1,6 +1,10 @@
 import math
+import random
+
 import torch
 import numpy as np
+from scipy.stats import expon
+
 from enea_fl.utils import DumbLogger, get_free_gpu, compute_total_number_of_flops, \
     read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
 from enea_fl.models import CnnFemnist
@@ -14,6 +18,7 @@ class Worker:
                  train_data={'x': [], 'y': []},
                  eval_data={'x': [], 'y': []},
                  model=None,
+                 random_death=True,
                  logger=None):
         self.logger = logger if logger is not None else DumbLogger()
         self._model = model
@@ -32,19 +37,37 @@ class Worker:
         self.train_data = train_data
         self.eval_data = eval_data
 
-    def train(self, batch_size=10, lr=0.1, round_ind=-1):
-        self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
-        train_steps = self.compute_local_energy_policy(batch_size=batch_size)
-        metrics = self.model.train(train_data=self.train_data,
-                                   train_steps=train_steps,
-                                   batch_size=batch_size,
-                                   lr=lr)
-        num_train_samples = train_steps * batch_size
-        energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
-        comp = compute_total_number_of_flops(model=self.model.model,
-                                             batch_size=batch_size)
+        self.tot_used_energy = 0.
+        self.tot_rounds_enrolled = 0
+        if random_death:
+            mean_available_rounds = random.randint(0, 150)
+            self.available_rounds = math.ceil(expon.rvs(scale=mean_available_rounds, size=1).item())
+            self.logger.print_it('Worker {} will switch off after {} rounds!'.format(self.id,
+                                                                                     self.available_rounds))
+        else:
+            self.available_rounds = np.inf
 
-        return energy_used, time_taken, comp, num_train_samples
+    def train(self, batch_size=10, lr=0.1, round_ind=-1):
+        if self.is_dead():
+            self.logger.print_it(' DEVICE IS DEAD! IT WILL NOT TRAIN THE MODEL! '.center(60, '-'))
+            return False, 0, 0, 0, 0
+        else:
+            self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
+            train_steps = self.compute_local_energy_policy(batch_size=batch_size)
+            metrics = self.model.train(train_data=self.train_data,
+                                       train_steps=train_steps,
+                                       batch_size=batch_size,
+                                       lr=lr)
+            num_train_samples = train_steps * batch_size
+            energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
+            comp = compute_total_number_of_flops(model=self.model.model,
+                                                 batch_size=batch_size)
+
+            self.tot_used_energy += energy_used
+            self.tot_rounds_enrolled += 1
+            self.check_death()
+
+            return True, energy_used, time_taken, comp, num_train_samples
 
     def compute_consumed_energy_and_time(self, n_samples):
         dataset = 'femnist' if isinstance(self.model.model, CnnFemnist) else 'sent140'
@@ -86,6 +109,22 @@ class Worker:
         else:
             raise ValueError('Something wrong with data in testing!')
         return data
+
+    def check_death(self):
+        if self.tot_rounds_enrolled >= self.available_rounds:
+            self.kill()
+            return True
+        else:
+            return False
+
+    def kill(self):
+        self.energy_policy = 'extreme'
+
+    def is_dead(self):
+        if self.energy_policy == 'extreme':
+            return True
+        else:
+            return False
 
     def compute_local_energy_policy(self, batch_size=10):
         if self.energy_policy == 'normal':

@@ -44,6 +44,8 @@ def parse_args():
     parser.add_argument('--orin_gpu_p', help='percentage of jetson orin with gpu devices;',
                         type=float, default=0.2, required=False)
 
+    parser.add_argument('--random_death', help='randomly kill workers after some time;', action='store_true')
+
     return parser.parse_args()
 
 
@@ -75,13 +77,16 @@ def main():
     sim_id = b64encode(random_bytes).decode('utf-8')[:6]
     store_sim_id_params(sim_id, args)
 
+    print('args.random_death: {}'.format(args.random_death))
+
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
                                device_types_distribution=define_device_type_distribution(args),
                                sampling_mode=args.sampling_mode,
                                max_spw=args.max_spw,
                                n_rounds=args.num_rounds,
-                               use_val_set=args.use_val_set)
+                               use_val_set=args.use_val_set,
+                               random_workers_death=args.random_death)
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
                       lr=args.lr,

@@ -35,22 +35,29 @@ class Server:
 
     def select_workers_based_on_energy(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
         assert alpha + beta == 1 and alpha >= 0 and beta >= 0
-        n_energy_workers = math.floor(num_workers * k)
-        n_random_workers = num_workers - n_energy_workers
-        last_workers = list(self.last_iteration_consumption.keys())
-        metrics = {w_id: None for w_id in last_workers}
-        acc_with_all = self.compute_accuracy_with_all_updates()
-        for w_id in last_workers:
-            metrics[w_id] = self.compute_metric(identity=w_id,
-                                                alpha=alpha,
-                                                beta=beta,
-                                                accuracy_with_all=acc_with_all)
-        metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
-        energy_workers_ids = list(list(metrics.keys())[:n_energy_workers])
-        energy_workers = [self.get_worker_by_id(w_id) for w_id in energy_workers_ids]
-        possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
-        other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
-        self.selected_workers = energy_workers + other_workers
+        last_workers = [w_id for (w_id, _, _) in self.last_updates]
+        if len(last_workers) == 1:
+            energy_workers = last_workers
+            n_random_workers = num_workers - len(energy_workers)
+            possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
+            other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+            self.selected_workers = energy_workers + other_workers
+        else:
+            n_energy_workers = math.floor(len(last_workers) * k)
+            n_random_workers = num_workers - n_energy_workers
+            metrics = {w_id: None for w_id in last_workers}
+            acc_with_all = self.compute_accuracy_with_all_updates()
+            for w_id in last_workers:
+                metrics[w_id] = self.compute_metric(identity=w_id,
+                                                    alpha=alpha,
+                                                    beta=beta,
+                                                    accuracy_with_all=acc_with_all)
+            metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
+            energy_workers_ids = list(list(metrics.keys())[:n_energy_workers])
+            energy_workers = [self.get_worker_by_id(w_id) for w_id in energy_workers_ids]
+            possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
+            other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+            self.selected_workers = energy_workers + other_workers
 
     def compute_metric(self, identity, alpha=0.5, beta=0.5, accuracy_with_all=None):
         if accuracy_with_all is None:
@@ -76,8 +83,8 @@ class Server:
                                                                                           ene_pol.upper(),
                                                                                           energy_used,
                                                                                           time_taken,
-                                                                                          accuracy_without_id*100,
-                                                                                          accuracy_with_all*100,
+                                                                                          accuracy_without_id * 100,
+                                                                                          accuracy_with_all * 100,
                                                                                           metric))
         return metric
 
@@ -126,9 +133,9 @@ class Server:
 
         def train_worker(worker):
             worker.set_weights(self.model.get_weights())
-            energy_used, time_taken, comp, num_samples = worker.train(batch_size=batch_size,
-                                                                      lr=lr,
-                                                                      round_ind=round_ind)
+            executed, energy_used, time_taken, comp, num_samples = worker.train(batch_size=batch_size,
+                                                                                lr=lr,
+                                                                                round_ind=round_ind)
             sys_metrics[worker.id]['bytes_read'] += worker.model.size
             sys_metrics[worker.id]['bytes_written'] += worker.model.size
             sys_metrics[worker.id]['energy_used'] += energy_used
@@ -136,9 +143,10 @@ class Server:
             sys_metrics[worker.id]['time_taken'] += time_taken
             self.last_iteration_consumption[worker.id]['time_taken'] = time_taken
             sys_metrics[worker.id]['local_computations'] = comp
-            update = worker.get_weights()
-            self.updates.append((worker.id, num_samples, update))
-            self.last_updates.append((worker.id, num_samples, update))
+            if executed:
+                update = worker.get_weights()
+                self.updates.append((worker.id, num_samples, update))
+                self.last_updates.append((worker.id, num_samples, update))
 
         Parallel(n_jobs=len(workers), prefer="threads")(delayed(train_worker)(worker) for worker in workers)
 

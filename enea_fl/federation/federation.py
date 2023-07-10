@@ -14,7 +14,8 @@ from enea_fl.utils import get_logger
 
 class Federation:
     def __init__(self, dataset, n_workers, device_types_distribution,
-                 max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False):
+                 max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False,
+                 random_workers_death=True):
         self.dataset = dataset
         self.n_workers = n_workers
         self.device_types_distribution = device_types_distribution
@@ -22,6 +23,7 @@ class Federation:
         self.sampling_mode = sampling_mode
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
+        self.random_workers_death = random_workers_death
         self.clean_previous_loggers()
         self.federation_logger = get_logger(node_type='federation',
                                             node_id='federation',
@@ -60,7 +62,6 @@ class Federation:
                                                   alpha=alpha,
                                                   beta=beta,
                                                   k=k)
-            self.federation_logger.print_it(sys_metrics)
             energy_used, time_taken = Federation.compute_energy_time(sys_metrics)
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
             write_metrics_to_csv(num_round=round_ind + 1,
@@ -124,7 +125,7 @@ class Federation:
         return server_test_metrics
 
     @staticmethod
-    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset,
+    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset, random_death,
                        loggers=None, indexization=None):
         workers = [Worker(worker_id=u,
                           device_type=device_types[i],
@@ -132,6 +133,7 @@ class Federation:
                           train_data=train_data[u],
                           eval_data=test_data[u],
                           model=WorkerModel(dataset=dataset, indexization=indexization),
+                          random_death=random_death,
                           logger=loggers[i]) for i, u in enumerate(workers)]
         return workers
 
@@ -246,7 +248,8 @@ class Federation:
         else:
             indexization = None
         workers = Federation.create_workers(workers_ids, device_types, energy_policies,
-                                            train_data, test_data, self.dataset, loggers, indexization)
+                                            train_data, test_data, self.dataset, self.random_workers_death,
+                                            loggers, indexization)
 
         for i, u in enumerate(workers_ids):
             self.federation_logger.print_it('Device {} is a {} '
