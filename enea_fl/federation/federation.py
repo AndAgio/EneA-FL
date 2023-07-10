@@ -117,7 +117,7 @@ class Federation:
                 tot_energy += metrics['energy_used']
             if metrics['time_taken'] > tot_time:
                 tot_time = metrics['time_taken']
-        if max_update_latency > 0:
+        if max_update_latency is not None and max_update_latency > 0:
             if tot_time > max_update_latency:
                 tot_time = max_update_latency
         return tot_energy, tot_time
