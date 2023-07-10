@@ -53,6 +53,7 @@ class WorkerModel:
 
     def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
         self._optimizer.param_groups[0]['lr'] = lr
+        self.model.to(self.processing_device)
         self.model.train()
         predictions = []
         labels_list = []
