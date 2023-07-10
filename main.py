@@ -18,8 +18,6 @@ def parse_args():
     parser.add_argument('--sampling_mode', help='mode to federate dataset; '
                                                 'options are: [iid+sim, iid_nsim, niid+sim, niid_nsim]',
                         type=str, default='iid+sim')
-    parser.add_argument('--num_rounds', help='number of rounds to simulate;', type=int, default=100)
-    parser.add_argument('--eval_every', help='evaluate every ____ rounds;', type=int, default=1)
     parser.add_argument('--clients_per_round', help='number of clients trained per round;', type=int, default=20)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--seed', help='seed for random client sampling and batch splitting', type=int, default=0)
@@ -49,6 +47,12 @@ def parse_args():
     parser.add_argument('--max_update_latency', help='maximum amount of time that the server waits for updates;',
                         type=float, default=None, required=False)
 
+    parser.add_argument('--target_type', help='type of target to reach during training; '
+                                              'options are: [rounds, acc, energy, time]',
+                        type=str, default='rounds')
+    parser.add_argument('--target_value', help='value of target to reach during training; ',
+                        type=float, default=100)
+
     return parser.parse_args()
 
 
@@ -57,6 +61,8 @@ def store_sim_id_params(sim_id, args):
     os.makedirs(metrics_dir, exist_ok=True)
     with open(os.path.join(metrics_dir, 'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
+    print('Simulation with ID {} has arguments:\n{}'.format(sim_id,
+                                                            args.__dict__))
 
 
 def define_device_type_distribution(args):
@@ -76,10 +82,10 @@ def main():
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
 
-    random_bytes = os.urandom(64)
-    sim_id = b64encode(random_bytes).decode('utf-8')[:6]
-    if '/' in sim_id:
-        sim_id.replace('0')
+    sim_id = '######'
+    while not sim_id.isalnum():
+        random_bytes = os.urandom(64)
+        sim_id = b64encode(random_bytes).decode('utf-8')[:6]
     store_sim_id_params(sim_id, args)
 
     my_federation = Federation(dataset=args.dataset,
@@ -87,14 +93,14 @@ def main():
                                device_types_distribution=define_device_type_distribution(args),
                                sampling_mode=args.sampling_mode,
                                max_spw=args.max_spw,
-                               n_rounds=args.num_rounds,
+                               target_type=args.target_type,
+                               target_value=args.target_value,
                                use_val_set=args.use_val_set,
                                random_workers_death=args.random_death,
                                sim_id=sim_id)
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
                       lr=args.lr,
-                      eval_every=args.eval_every,
                       policy=args.policy,
                       alpha=args.alpha,
                       beta=args.beta,

@@ -14,14 +14,18 @@ from enea_fl.utils import get_logger
 
 class Federation:
     def __init__(self, dataset, n_workers, device_types_distribution,
-                 max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False,
+                 max_spw=math.inf, sampling_mode='iid+sim',
+                 target_type='rounds', target_value=100,
+                 use_val_set=False,
                  random_workers_death=True, sim_id='000000'):
         self.dataset = dataset
         self.n_workers = n_workers
         self.device_types_distribution = device_types_distribution
         self.max_spw = max_spw
         self.sampling_mode = sampling_mode
-        self.n_rounds = n_rounds
+        assert target_type in ['rounds', 'acc', 'energy', 'time']
+        self.target_type = target_type
+        self.target_value = target_value
         self.use_val_set = use_val_set
         self.random_workers_death = random_workers_death
         self.sim_id = sim_id
@@ -30,13 +34,15 @@ class Federation:
                                             node_id='federation',
                                             log_folder=os.path.join('logs', self.sim_id))
         self.federation_logger.print_it('Setting up federation for learning '
-                                        'over {} in {} rounds'.format(dataset.upper(), n_rounds))
+                                        'over {} targeting {} to reach {}'.format(dataset.upper(),
+                                                                                  target_type,
+                                                                                  target_value))
         self.workers = self.setup_workers()
         self.server = self.create_server()
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         self.federation_logger.print_it('Federation initialized with {} workers!'.format(len(self.workers)))
 
-    def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1,
+    def run(self, clients_per_round=10, batch_size=10, lr=0.1,
             policy='energy_aware', alpha=0.5, beta=0.5, k=0.9,
             max_update_latency=None):
         self.federation_logger.print_it(' SIMULATION ID: {} '.format(self.sim_id).center(60, '-'))
@@ -45,10 +51,13 @@ class Federation:
         self.test_workers_and_server(round_ind=0)
 
         # Simulate training
-        for round_ind in range(self.n_rounds):
-            self.federation_logger.print_it(' Round {} of {}: Training {} workers '.format(round_ind + 1,
-                                                                                           self.n_rounds,
-                                                                                           clients_per_round)
+        round_ind = 0
+        tot_energy_used = 0.
+        tot_time_taken = 0.
+        reached_target = False
+        while not reached_target:
+            self.federation_logger.print_it(' Round {}: Training {} workers '.format(round_ind + 1,
+                                                                                     clients_per_round)
                                             .center(60, '-'))
 
             # Simulate server model training on selected clients' data
@@ -62,6 +71,8 @@ class Federation:
                                                   k=k,
                                                   max_update_latency=max_update_latency)
             energy_used, time_taken = Federation.compute_energy_time(sys_metrics, max_update_latency)
+            tot_energy_used += energy_used
+            tot_time_taken += time_taken
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
             write_metrics_to_csv(num_round=round_ind + 1,
                                  ids=worker_ids,
@@ -75,15 +86,19 @@ class Federation:
             self.server.update_model()
 
             # Test model
-            if (round_ind + 1) % eval_every == 0 or (round_ind + 1) == self.n_rounds:
-                # print_stats(self.federation_logger, i + 1, self.server, stat_writer_fn, self.use_val_set)
-                server_metrics = self.test_workers_and_server(round_ind=round_ind + 1)
-                store_results_to_csv(round_ind=round_ind + 1,
-                                     metrics=server_metrics,
-                                     energy=energy_used,
-                                     time_taken=time_taken,
-                                     metrics_dir='metrics',
-                                     sim_id=self.sim_id)
+            server_metrics = self.test_workers_and_server(round_ind=round_ind + 1)
+            store_results_to_csv(round_ind=round_ind + 1,
+                                 metrics=server_metrics,
+                                 energy=energy_used,
+                                 time_taken=time_taken,
+                                 metrics_dir='metrics',
+                                 sim_id=self.sim_id)
+
+            reached_target = self.check_target(round_ind=round_ind,
+                                               tot_energy=tot_energy_used,
+                                               time_taken=tot_time_taken,
+                                               accuracy=server_metrics['accuracy'])
+            round_ind += 1
 
         self.federation_logger.print_it(' Federation rounds finished! '.center(60, '-'))
         # Save server model
@@ -106,6 +121,27 @@ class Federation:
             if tot_time > max_update_latency:
                 tot_time = max_update_latency
         return tot_energy, tot_time
+
+    def check_target(self, round_ind, tot_energy, time_taken, accuracy):
+        if self.target_type == 'rounds':
+            actual_value = round_ind
+            to_return = True if round_ind >= self.target_value - 1 else False
+        if self.target_type == 'acc':
+            actual_value = accuracy
+            to_return = True if accuracy >= self.target_value else False
+        if self.target_type == 'energy':
+            actual_value = tot_energy
+            to_return = True if tot_energy >= self.target_value else False
+        if self.target_type == 'time':
+            actual_value = time_taken
+            to_return = True if time_taken >= self.target_value else False
+        else:
+            raise ValueError('Something wrong with target check!')
+
+        self.federation_logger.print_it('{} reached {}, while target value is {}'.format(self.target_type.upper(),
+                                                                                         actual_value,
+                                                                                         self.target_value))
+        return to_return
 
     def test_workers_and_server(self, round_ind):
         test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',

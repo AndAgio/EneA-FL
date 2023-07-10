@@ -14,26 +14,35 @@ def run_all_in_parallel(commands, files):
 
 def run_alpha_beta():
     datasets = ["femnist", "sent140"]
-    alphas = [i for i in np.arange(0, 1, 0.05)]
+    alphas = [i for i in np.arange(0, 1.05, 0.05)]
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--num_rounds=100 --eval_every=1 --clients_per_round=20 --lr=0.1 --policy='energy_aware' "
-                "--alpha={} --beta={}".format(d, alphas[i], 1 - alphas[i]) for d in datasets for i in
-                range(len(alphas))]
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
+                "--target_type='rounds' --target_value=100".format(d, alphas[i], 1 - alphas[i])
+                for d in datasets for i in range(len(alphas))]
+    commands += ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                 "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
+                 for d in datasets]
     logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(d, alphas[i], 1 - alphas[i])
                 for d in datasets
                 for i in range(len(alphas))]
+    logfiles += ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
     run_all_in_parallel(commands, logfiles)
 
 
 def run_clients():
     datasets = ["femnist", "sent140"]
     clients = [i for i in range(10, 80, 5)]
+    policies = ['random', 'energy_aware']
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--num_rounds=100 --eval_every=1 --clients_per_round={} --lr=0.1 --policy='energy_aware' "
-                "--alpha=0.7 --beta=0.3".format(d, client) for d in datasets for client in clients]
-    logfiles = ["logs/clients/d={}-c={}.txt".format(d, client)
+                "--clients_per_round={} --lr=0.1 --policy={} --alpha=0.7 --beta=0.3"
+                "--target_type='rounds' --target_value=100".format(d, client, policy)
                 for d in datasets
-                for client in clients]
+                for client in clients
+                for policy in policies]
+    logfiles = ["logs/clients/d={}-c={}-p={}.txt".format(d, client, policy)
+                for d in datasets
+                for client in clients
+                for policy in policies]
     run_all_in_parallel(commands, logfiles)
 
 
