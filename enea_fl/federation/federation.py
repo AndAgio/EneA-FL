@@ -4,12 +4,13 @@ import shutil
 import random
 import numpy as np
 import math
+import torch
 from .server import Server
 from .worker import Worker
 from .utils import print_workers_metrics, print_server_metrics, write_metrics_to_csv, store_results_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
 from enea_fl.models.utils import get_word_emb_arr
-from enea_fl.utils import get_logger
+from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Federation:
@@ -168,14 +169,16 @@ class Federation:
 
     @staticmethod
     def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset, random_death,
+                       cuda_devices,
                        loggers=None, indexization=None):
         workers = [Worker(worker_id=u,
                           device_type=device_types[i],
                           energy_policy=energy_policies[i],
                           train_data=train_data[u],
                           eval_data=test_data[u],
-                          model=WorkerModel(dataset=dataset, indexization=indexization),
+                          model=WorkerModel(dataset=dataset, indexization=indexization, device=cuda_devices[i]),
                           random_death=random_death,
+                          cuda_device=cuda_devices[i],
                           logger=loggers[i]) for i, u in enumerate(workers)]
         return workers
 
@@ -226,7 +229,8 @@ class Federation:
                                                             sampling_mode='iid+sim',
                                                             max_spw=10000,
                                                             eval_set=eval_set)
-        return Server(server_model=ServerModel(self.dataset, indexization=indexization),
+        cuda_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available() else 'cpu')
+        return Server(server_model=ServerModel(self.dataset, indexization=indexization, device=cuda_device),
                       possible_workers=self.workers,
                       test_data=test_data['0'],
                       logger=logger)
@@ -269,6 +273,8 @@ class Federation:
                                                                                sampling_mode=self.sampling_mode,
                                                                                max_spw=self.max_spw,
                                                                                eval_set=eval_set)
+        cuda_devices = [torch.device('cuda:{}'.format(get_free_gpu())
+                                     if torch.cuda.is_available() else 'cpu') for _ in workers_ids]
         device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu', 'orin_cpu', 'orin_gpu'],
                                         size=len(workers_ids), replace=True,
                                         p=list(self.device_types_distribution.values()))
@@ -285,6 +291,7 @@ class Federation:
             indexization = None
         workers = Federation.create_workers(workers_ids, device_types, energy_policies,
                                             train_data, test_data, self.dataset, self.random_workers_death,
+                                            cuda_devices,
                                             loggers, indexization)
 
         for i, u in enumerate(workers_ids):

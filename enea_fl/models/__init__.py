@@ -5,18 +5,16 @@ from .sent140 import CnnSent
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
 
-import time
-import subprocess
 import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
 from sklearn.metrics import f1_score, accuracy_score
-from enea_fl.utils import DumbLogger, get_free_gpu
+from enea_fl.utils import DumbLogger
 
 
 class WorkerModel:
-    def __init__(self, dataset='femnist', indexization=None, lr=0.01):
+    def __init__(self, dataset='femnist', indexization=None, device='cpu', lr=0.01):
         assert dataset in ['femnist', 'sent140']
         if dataset == 'sent140' and indexization is None:
             raise ValueError('Indexization should be a valid input when'
@@ -27,8 +25,7 @@ class WorkerModel:
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
-        self.processing_device = torch.device('cuda:0'  # {}'.format(get_free_gpu())
-                                              if torch.cuda.is_available() else 'cpu')
+        self.processing_device = device
         self.logger = DumbLogger
         self.indexization = indexization
 
@@ -192,7 +189,7 @@ class WorkerModel:
 
 
 class ServerModel:
-    def __init__(self, dataset='femnist', indexization=None):
+    def __init__(self, dataset='femnist', indexization=None, device='cpu'):
         assert dataset in ['femnist', 'sent140']
         if dataset == 'sent140' and indexization is None:
             raise ValueError('Indexization should be a valid input when'
@@ -200,8 +197,7 @@ class ServerModel:
         self.dataset = dataset
         self.indexization = indexization
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
-        self.processing_device = torch.device('cuda:0'  # {}'.format(get_free_gpu())
-                                              if torch.cuda.is_available() else 'cpu')
+        self.processing_device = device
 
     @property
     def size(self):

@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from scipy.stats import expon
 
-from enea_fl.utils import DumbLogger, get_free_gpu, compute_total_number_of_flops, \
+from enea_fl.utils import DumbLogger, compute_total_number_of_flops, \
     read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
 from enea_fl.models import CnnFemnist
 
@@ -19,6 +19,7 @@ class Worker:
                  eval_data={'x': [], 'y': []},
                  model=None,
                  random_death=True,
+                 cuda_device='cpu',
                  logger=None):
         self.logger = logger if logger is not None else DumbLogger()
         self._model = model
@@ -26,8 +27,7 @@ class Worker:
         self.id = worker_id
         self.device_type = device_type
         # gpu = True if device_type in ['nano', 'jetson'] else False
-        self.processing_device = torch.device('cuda:0'  # {}'.format(get_free_gpu())
-                                              if torch.cuda.is_available() else 'cpu')
+        self.processing_device = cuda_device
         self.logger.print_it('Worker {} is running on a {} and using '
                              'a {} for training and inference!'.format(self.id,
                                                                        self.device_type,
