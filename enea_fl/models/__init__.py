@@ -83,6 +83,7 @@ class WorkerModel:
         return metrics
 
     def test_my_model(self, test_data, batch_size=10):
+        self.model.to(self.processing_device)
         self.model.eval()
         with torch.no_grad():
             predictions = []
@@ -230,6 +231,7 @@ class ServerModel:
     def test(self, test_data, batch_size=10):
         predictions = []
         labels_list = []
+        self.model.to(self.processing_device)
         self.model.eval()
         with torch.no_grad():
             for batch_input, batch_label in batch_data(test_data, batch_size):
