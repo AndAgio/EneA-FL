@@ -5,7 +5,7 @@ import numpy as np
 import math
 from .server import Server
 from .worker import Worker
-from .utils import print_metrics, write_metrics_to_csv
+from .utils import print_workers_metrics, print_server_metrics, write_metrics_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
 from enea_fl.models.utils import get_word_emb_arr
 from enea_fl.utils import get_logger
@@ -34,21 +34,11 @@ class Federation:
         self.worker_ids, self.worker_num_samples = self.server.get_clients_info(self.workers)
         self.federation_logger.print_it('Federation initialized with {} workers!'.format(len(self.workers)))
 
-    def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1, alpha=0.5, beta=0.5, k=0.9):
+    def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1,
+            policy='energy_aware', alpha=0.5, beta=0.5, k=0.9):
         # Initial status
         self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
-        test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
-                                              round_ind=0)
-        print_metrics(logger=self.federation_logger,
-                      metrics=test_metrics,
-                      weights=self.server.get_clients_info(self.server.get_all_workers())[1],
-                      prefix='{}_'.format('test' if not self.use_val_set else 'val'))
-        write_metrics_to_csv(num_round=0,
-                             ids=[w.id for w in self.server.get_all_workers()],
-                             metrics=test_metrics,
-                             partition='test' if not self.use_val_set else 'val',
-                             metrics_dir='metrics',
-                             metrics_name='{}_{}'.format('federation', 'performance'))
+        self.test_workers_and_server(round_ind=0)
 
         # Simulate training
         for round_ind in range(self.n_rounds):
@@ -62,6 +52,7 @@ class Federation:
                                                   batch_size=batch_size,
                                                   lr=lr,
                                                   round_ind=round_ind + 1,
+                                                  policy=policy,
                                                   alpha=alpha,
                                                   beta=beta,
                                                   k=k)
@@ -79,18 +70,7 @@ class Federation:
             # Test model
             if (round_ind + 1) % eval_every == 0 or (round_ind + 1) == self.n_rounds:
                 # print_stats(self.federation_logger, i + 1, self.server, stat_writer_fn, self.use_val_set)
-                test_metrics = self.server.test_model(set_to_use='test' if not self.use_val_set else 'val',
-                                                      round_ind=round_ind + 1)
-                print_metrics(logger=self.federation_logger,
-                              metrics=test_metrics,
-                              weights=self.server.get_clients_info(self.server.get_all_workers())[1],
-                              prefix='{}_'.format('test' if not self.use_val_set else 'val'))
-                write_metrics_to_csv(num_round=round_ind + 1,
-                                     ids=[w.id for w in self.server.get_all_workers()],
-                                     metrics=test_metrics,
-                                     partition='test' if not self.use_val_set else 'val',
-                                     metrics_dir='metrics',
-                                     metrics_name='{}_{}'.format('federation', 'performance'))
+                self.test_workers_and_server(round_ind=round_ind + 1)
 
         self.federation_logger.print_it(' Federation rounds finished! '.center(60, '-'))
         # Save server model
@@ -99,6 +79,24 @@ class Federation:
             os.makedirs(ckpt_path)
         save_path = self.server.save_model(checkpoints_folder=ckpt_path)
         self.federation_logger.print_it('Model saved in path: {}'.format(save_path))
+
+    def test_workers_and_server(self, round_ind):
+        test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
+                                                         round_ind=round_ind)
+        print_workers_metrics(logger=self.federation_logger,
+                              metrics=test_metrics,
+                              weights=self.server.get_clients_info(self.server.get_all_workers())[1],
+                              prefix='{}_'.format('test' if not self.use_val_set else 'val'))
+        server_test_metrics = self.server.test_model_on_server()
+        print_server_metrics(logger=self.federation_logger,
+                             metrics={'server': server_test_metrics})
+        test_metrics['server'] = server_test_metrics
+        write_metrics_to_csv(num_round=round_ind,
+                             ids=[w.id for w in self.server.get_all_workers()] + ['server'],
+                             metrics=test_metrics,
+                             partition='test' if not self.use_val_set else 'val',
+                             metrics_dir='metrics',
+                             metrics_name='{}_{}'.format('federation', 'performance'))
 
     @staticmethod
     def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset,

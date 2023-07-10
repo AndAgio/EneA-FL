@@ -56,6 +56,7 @@ class WorkerModel:
         self.model.train()
         predictions = []
         labels_list = []
+        metrics = {}
         running_loss = 0.
         counter = 0
         for batch_input, batch_label in batch_data(train_data, batch_size):
@@ -83,42 +84,36 @@ class WorkerModel:
     def test_my_model(self, test_data, batch_size=10):
         self.model.eval()
         with torch.no_grad():
-            running_loss = 0.
             predictions = []
             labels_list = []
             counter = 0.
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 outputs = self.model(batch_input)
-                running_loss += self.criterion(outputs, batch_label).item()
                 counter += 1.
                 pred_labels = torch.argmax(outputs, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
-                metrics = {'loss': running_loss / counter,
-                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
                                    metrics=metrics, mode='test local')
-            return {'loss': running_loss / counter}
+            return metrics
 
     def test_other_model(self, test_data, ids, other_model, results, batch_size=10):
         other_model.eval()
         with torch.no_grad():
-            running_loss = 0.
             predictions = []
             labels_list = []
             counter = 0
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 outputs = other_model(batch_input)
-                running_loss += self.criterion(outputs, batch_label).item()
                 counter += 1
                 pred_labels = torch.argmax(outputs, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
-                metrics = {'loss': running_loss / counter,
-                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
                                    metrics=metrics, mode='test other')
@@ -130,19 +125,16 @@ class WorkerModel:
         labels_list = []
         final_model.eval()
         with torch.no_grad():
-            running_loss = 0.
             counter = 0
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 output = final_model(batch_input)
-                running_loss += self.criterion(output, batch_label).item()
                 preds_softmax = torch.nn.functional.softmax(output, dim=1)
                 pred_labels = torch.argmax(preds_softmax, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
                 counter += 1
-                metrics = {'loss': running_loss / counter,
-                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
                                    metrics=metrics, mode='test global')
@@ -150,7 +142,6 @@ class WorkerModel:
             f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
             accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
         return {
-            'loss': running_loss / counter,
             'accuracy': accuracy,
             'f1': f1
         }
@@ -264,3 +255,6 @@ class ServerModel:
             return inputs, labels
         else:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
+
+    def create_copy(self):
+        return ServerModel(self.dataset, self.indexization)

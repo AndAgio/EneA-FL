@@ -48,14 +48,17 @@ class Server:
         metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
         energy_workers_ids = list(list(metrics.keys())[:n_energy_workers])
         energy_workers = [self.get_worker_by_id(w_id) for w_id in energy_workers_ids]
-        other_workers = np.random.choice(self.possible_workers, n_random_workers, replace=False).tolist()
+        possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
+        other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
         self.selected_workers = energy_workers + other_workers
 
     def compute_metric(self, identity, alpha=0.5, beta=0.5, accuracy_with_all=None):
         if accuracy_with_all is None:
             raise ValueError('Cannot compute metric without knowing model accuracy with all updates!')
         model_updates = [worker_model for (w_id, _, worker_model) in self.last_updates if w_id != identity]
-        model = copy.deepcopy(self.model)
+        self.logger.print_it('Computing accuracy with all updates except one. '
+                             'Updates length: {}'.format(len(model_updates)))
+        model = self.model.create_copy()
         model.set_weights(Server.aggregate_model(model_updates))
         accuracy_without_id = model.test(test_data=self.local_test_data)['accuracy']
         num = accuracy_with_all - accuracy_without_id
@@ -80,7 +83,9 @@ class Server:
 
     def compute_accuracy_with_all_updates(self):
         received_model_updates = [worker_model for (_, _, worker_model) in self.last_updates]
-        model = copy.deepcopy(self.model)
+        self.logger.print_it('Computing accuracy with all updates. '
+                             'Updates length: {}'.format(len(received_model_updates)))
+        model = self.model.create_copy()
         model.set_weights(Server.aggregate_model(received_model_updates))
         accuracy_with_all = model.test(test_data=self.local_test_data)['accuracy']
         return accuracy_with_all
@@ -97,10 +102,11 @@ class Server:
                 return worker
         raise ValueError('Worker with ID: {} not found!'.format(identity))
 
-    def train_model(self, num_workers=10, batch_size=10, lr=0.1, round_ind=-1, alpha=0.5, beta=0.5, k=0.9):
+    def train_model(self, num_workers=10, batch_size=10, lr=0.1, round_ind=-1,
+                    policy='energy_aware', alpha=0.5, beta=0.5, k=0.9):
         self.logger.print_it(' Round {} '.format(round_ind).center(60, '-'))
         _ = self.select_workers(num_workers=num_workers,
-                                policy='energy_aware' if round_ind > 1 else 'random',
+                                policy=policy if round_ind > 1 else 'random',
                                 alpha=alpha,
                                 beta=beta,
                                 k=k)
@@ -115,6 +121,8 @@ class Server:
 
         self.last_iteration_consumption = {w.id: {'energy_used': 0,
                                                   'time_taken': 0} for w in workers}
+
+        self.last_updates = []
 
         def train_worker(worker):
             worker.set_weights(self.model.get_weights())
@@ -157,7 +165,7 @@ class Server:
         self.model.set_weights(Server.aggregate_model(received_model_updates))
         self.updates = []
 
-    def test_model(self, workers_to_test=None, set_to_use='test', round_ind=-1):
+    def test_model_on_workers(self, workers_to_test=None, set_to_use='test', round_ind=-1):
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers
@@ -169,7 +177,10 @@ class Server:
 
         Parallel(n_jobs=len(workers_to_test), prefer="threads")(delayed(test_worker)(worker)
                                                                 for worker in workers_to_test)
+        return metrics
 
+    def test_model_on_server(self):
+        metrics = self.model.test(test_data=self.local_test_data)
         return metrics
 
     def get_clients_info(self, workers):

@@ -77,7 +77,7 @@ def get_metrics_names(metrics):
     return list(metrics_dict.keys())
 
 
-def print_metrics(logger, metrics, weights, prefix=''):
+def print_workers_metrics(logger, metrics, weights, prefix=''):
     """Prints weighted averages of the given metrics.
 
     Args:
@@ -97,4 +97,20 @@ def print_metrics(logger, metrics, weights, prefix=''):
                  np.percentile(ordered_metric, 10),
                  np.percentile(ordered_metric, 50),
                  np.percentile(ordered_metric, 90)))
+
+
+def print_server_metrics(logger, metrics):
+    """Prints weighted averages of the given metrics.
+
+    Args:
+        metrics: dict with client ids as keys. Each entry is a dict
+            with the metrics of that client.
+        weights: dict with client ids as keys. Each entry is the weight
+            for that client.
+    """
+    message = 'server:'
+    metric_names = get_metrics_names(metrics)
+    for metric in metric_names:
+        message += ' {} = {}'.format(metric, metrics['server'][metric])
+    logger.print_it(message)
 
