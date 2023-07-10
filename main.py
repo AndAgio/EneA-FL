@@ -46,6 +46,9 @@ def parse_args():
 
     parser.add_argument('--random_death', help='randomly kill workers after some time;', action='store_true')
 
+    parser.add_argument('--max_update_latency', help='maximum amount of time that the server waits for updates;',
+                        type=float, default=None, required=False)
+
     return parser.parse_args()
 
 
@@ -77,8 +80,6 @@ def main():
     sim_id = b64encode(random_bytes).decode('utf-8')[:6]
     store_sim_id_params(sim_id, args)
 
-    print('args.random_death: {}'.format(args.random_death))
-
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
                                device_types_distribution=define_device_type_distribution(args),
@@ -95,6 +96,7 @@ def main():
                       alpha=args.alpha,
                       beta=args.beta,
                       k=args.k,
+                      max_update_latency=args.max_update_latency,
                       sim_id=sim_id)
 
 

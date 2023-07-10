@@ -110,7 +110,8 @@ class Server:
         raise ValueError('Worker with ID: {} not found!'.format(identity))
 
     def train_model(self, num_workers=10, batch_size=10, lr=0.1, round_ind=-1,
-                    policy='energy_aware', alpha=0.5, beta=0.5, k=0.9):
+                    policy='energy_aware', alpha=0.5, beta=0.5, k=0.9,
+                    max_update_latency=None):
         self.logger.print_it(' Round {} '.format(round_ind).center(60, '-'))
         _ = self.select_workers(num_workers=num_workers,
                                 policy=policy if round_ind > 1 else 'random',
@@ -143,10 +144,13 @@ class Server:
             sys_metrics[worker.id]['time_taken'] += time_taken
             self.last_iteration_consumption[worker.id]['time_taken'] = time_taken
             sys_metrics[worker.id]['local_computations'] = comp
-            if executed:
+            if (executed and max_update_latency is None) or (executed and time_taken < max_update_latency):
                 update = worker.get_weights()
                 self.updates.append((worker.id, num_samples, update))
                 self.last_updates.append((worker.id, num_samples, update))
+            else:
+                self.logger.print_it('Worker {} did not execute the training in time! '
+                                     'Either dead or too slow!'.format(worker.id))
 
         Parallel(n_jobs=len(workers), prefer="threads")(delayed(train_worker)(worker) for worker in workers)
 

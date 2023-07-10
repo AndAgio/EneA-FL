@@ -40,7 +40,8 @@ class Federation:
         self.federation_logger.print_it('Federation initialized with {} workers!'.format(len(self.workers)))
 
     def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1,
-            policy='energy_aware', alpha=0.5, beta=0.5, k=0.9, sim_id=0):
+            policy='energy_aware', alpha=0.5, beta=0.5, k=0.9,
+            max_update_latency=None, sim_id=0):
         self.federation_logger. print_it(' SIMULATION ID: {} '.format(sim_id).center(60, '-'))
         # Initial status
         self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
@@ -61,8 +62,9 @@ class Federation:
                                                   policy=policy,
                                                   alpha=alpha,
                                                   beta=beta,
-                                                  k=k)
-            energy_used, time_taken = Federation.compute_energy_time(sys_metrics)
+                                                  k=k,
+                                                  max_update_latency=max_update_latency)
+            energy_used, time_taken = Federation.compute_energy_time(sys_metrics, max_update_latency)
             worker_ids, worker_num_samples = self.server.get_clients_info(self.server.get_selected_workers())
             write_metrics_to_csv(num_round=round_ind + 1,
                                  ids=worker_ids,
@@ -95,13 +97,17 @@ class Federation:
         self.federation_logger.print_it('Model saved in path: {}'.format(save_path))
 
     @staticmethod
-    def compute_energy_time(sys_metrics):
+    def compute_energy_time(sys_metrics, max_update_latency):
         tot_energy = 0.
         tot_time = 0.
         for worker_id, metrics in sys_metrics.items():
-            tot_energy += metrics['energy_used']
+            if max_update_latency is None or (max_update_latency > 0 and metrics['time_taken'] < max_update_latency):
+                tot_energy += metrics['energy_used']
             if metrics['time_taken'] > tot_time:
                 tot_time = metrics['time_taken']
+        if max_update_latency > 0:
+            if tot_time > max_update_latency:
+                tot_time = max_update_latency
         return tot_energy, tot_time
 
     def test_workers_and_server(self, round_ind, sim_id):
