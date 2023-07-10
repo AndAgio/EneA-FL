@@ -123,6 +123,9 @@ class Federation:
         return tot_energy, tot_time
 
     def check_target(self, round_ind, tot_energy, time_taken, accuracy):
+        # self.federation_logger.print_it('self.target_type: {}'.format(self.target_type))
+        # self.federation_logger.print_it('self.target_value: {}'.format(self.target_value))
+        assert self.target_type in ['rounds', 'acc', 'energy', 'time']
         if self.target_type == 'rounds':
             actual_value = round_ind
             to_return = True if round_ind >= self.target_value - 1 else False

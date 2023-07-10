@@ -19,6 +19,7 @@ meta
 glove.6B.300d.txt
 glove.*.txt
 metrics/
+*.ckpt
 
 
 # Byte-compiled / optimized / DLL files
