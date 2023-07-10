@@ -76,8 +76,8 @@ class Server:
                                                                                           ene_pol.upper(),
                                                                                           energy_used,
                                                                                           time_taken,
-                                                                                          accuracy_with_all*100,
                                                                                           accuracy_without_id*100,
+                                                                                          accuracy_with_all*100,
                                                                                           metric))
         return metric
 

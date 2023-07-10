@@ -3,6 +3,9 @@ import numpy as np
 import random
 import math
 import torch
+import os
+import json
+from base64 import b64encode
 
 from enea_fl.federation import Federation
 
@@ -32,12 +35,23 @@ def parse_args():
     return parser.parse_args()
 
 
+def store_sim_id_params(sim_id, args):
+    metrics_dir = os.path.join('metrics', sim_id)
+    os.makedirs(metrics_dir, exist_ok=True)
+    with open(os.path.join(metrics_dir, 'args.txt'), 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+
+
 def main():
     args = parse_args()
     # Set the random seed if provided (affects client sampling, and batching)
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
+
+    random_bytes = os.urandom(64)
+    sim_id = b64encode(random_bytes).decode('utf-8')[:6]
+    store_sim_id_params(sim_id, args)
 
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
@@ -52,7 +66,8 @@ def main():
                       policy=args.policy,
                       alpha=args.alpha,
                       beta=args.beta,
-                      k=args.k)
+                      k=args.k,
+                      sim_id=sim_id)
 
 
 if __name__ == '__main__':

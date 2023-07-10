@@ -17,6 +17,7 @@ def write_metrics_to_csv(
         metrics,
         partition,
         metrics_dir,
+        sim_id,
         metrics_name):
     """Prints or appends the given metrics in a csv.
 
@@ -37,6 +38,7 @@ def write_metrics_to_csv(
         metrics_dir: String. Directory for the metrics file. May not exist.
         metrics_name: String. Filename for the metrics file. May not exist.
     """
+    metrics_dir = os.path.join(metrics_dir, sim_id)
     os.makedirs(metrics_dir, exist_ok=True)
     path = os.path.join(metrics_dir, '{}.csv'.format(metrics_name))
 
@@ -113,4 +115,23 @@ def print_server_metrics(logger, metrics):
     for metric in metric_names:
         message += ' {} = {}'.format(metric, metrics['server'][metric])
     logger.print_it(message)
+
+
+def store_results_to_csv(round_ind, metrics, energy, time_taken, metrics_dir, sim_id):
+    metrics_dir = os.path.join(metrics_dir, sim_id)
+    if not os.path.exists(metrics_dir):
+        os.makedirs(metrics_dir, exist_ok=True)
+    path = os.path.join(metrics_dir, 'final_metrics.csv'.format(sim_id))
+    if os.path.exists(path):
+        data = pd.read_csv(path)
+    else:
+        columns = ['round'] + [key for key, _ in metrics.items()] + ['energy', 'time_taken']
+        data = pd.DataFrame(columns=columns)
+    new_row = {'round': round_ind}
+    for key, value in metrics.items():
+        new_row[key] = value
+    new_row['energy'] = energy
+    new_row['time_taken'] = time_taken
+    data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
+    data.to_csv(path)
 
