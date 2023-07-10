@@ -22,6 +22,7 @@ def run_alpha_beta():
     commands += ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                  "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
                  for d in datasets]
+    os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(d, alphas[i], 1 - alphas[i])
                 for d in datasets
                 for i in range(len(alphas))]
@@ -39,6 +40,7 @@ def run_clients():
                 for d in datasets
                 for client in clients
                 for policy in policies]
+    os.makedirs(os.path.join('logs', 'clients'), exist_ok=True)
     logfiles = ["logs/clients/d={}-c={}-p={}.txt".format(d, client, policy)
                 for d in datasets
                 for client in clients
