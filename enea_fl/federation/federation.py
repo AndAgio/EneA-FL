@@ -126,13 +126,13 @@ class Federation:
         if self.target_type == 'rounds':
             actual_value = round_ind
             to_return = True if round_ind >= self.target_value - 1 else False
-        if self.target_type == 'acc':
+        elif self.target_type == 'acc':
             actual_value = accuracy
             to_return = True if accuracy >= self.target_value else False
-        if self.target_type == 'energy':
+        elif self.target_type == 'energy':
             actual_value = tot_energy
             to_return = True if tot_energy >= self.target_value else False
-        if self.target_type == 'time':
+        elif self.target_type == 'time':
             actual_value = time_taken
             to_return = True if time_taken >= self.target_value else False
         else:
