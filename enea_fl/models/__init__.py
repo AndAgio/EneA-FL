@@ -101,6 +101,7 @@ class WorkerModel:
             return metrics
 
     def test_other_model(self, test_data, ids, other_model, results, batch_size=10):
+        other_model.to(self.processing_device)
         other_model.eval()
         with torch.no_grad():
             predictions = []
@@ -123,6 +124,7 @@ class WorkerModel:
     def test_final_model(self, final_model, test_data, batch_size=10):
         predictions = []
         labels_list = []
+        final_model.to(self.processing_device)
         final_model.eval()
         with torch.no_grad():
             counter = 0
