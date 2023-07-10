@@ -15,7 +15,7 @@ from enea_fl.utils import get_logger
 class Federation:
     def __init__(self, dataset, n_workers, device_types_distribution,
                  max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False,
-                 random_workers_death=True):
+                 random_workers_death=True, sim_id='000000'):
         self.dataset = dataset
         self.n_workers = n_workers
         self.device_types_distribution = device_types_distribution
@@ -24,14 +24,11 @@ class Federation:
         self.n_rounds = n_rounds
         self.use_val_set = use_val_set
         self.random_workers_death = random_workers_death
+        self.sim_id = sim_id
         self.clean_previous_loggers()
         self.federation_logger = get_logger(node_type='federation',
                                             node_id='federation',
-                                            log_folder=os.path.join('logs',
-                                                                    dataset,
-                                                                    '{}_workers'.format(n_workers),
-                                                                    'spw={}'.format(max_spw),
-                                                                    'mode={}'.format(sampling_mode)))
+                                            log_folder=os.path.join('logs', self.sim_id))
         self.federation_logger.print_it('Setting up federation for learning '
                                         'over {} in {} rounds'.format(dataset.upper(), n_rounds))
         self.workers = self.setup_workers()
@@ -41,11 +38,11 @@ class Federation:
 
     def run(self, clients_per_round=10, batch_size=10, lr=0.1, eval_every=1,
             policy='energy_aware', alpha=0.5, beta=0.5, k=0.9,
-            max_update_latency=None, sim_id=0):
-        self.federation_logger. print_it(' SIMULATION ID: {} '.format(sim_id).center(60, '-'))
+            max_update_latency=None):
+        self.federation_logger.print_it(' SIMULATION ID: {} '.format(self.sim_id).center(60, '-'))
         # Initial status
         self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
-        self.test_workers_and_server(round_ind=0, sim_id=sim_id)
+        self.test_workers_and_server(round_ind=0)
 
         # Simulate training
         for round_ind in range(self.n_rounds):
@@ -71,7 +68,7 @@ class Federation:
                                  metrics=sys_metrics,
                                  partition='train',
                                  metrics_dir='metrics',
-                                 sim_id=sim_id,
+                                 sim_id=self.sim_id,
                                  metrics_name='{}_{}'.format('federation', 'energy'))
 
             # Update server model
@@ -80,13 +77,13 @@ class Federation:
             # Test model
             if (round_ind + 1) % eval_every == 0 or (round_ind + 1) == self.n_rounds:
                 # print_stats(self.federation_logger, i + 1, self.server, stat_writer_fn, self.use_val_set)
-                server_metrics = self.test_workers_and_server(round_ind=round_ind + 1, sim_id=sim_id)
-                store_results_to_csv(round_ind=round_ind+1,
+                server_metrics = self.test_workers_and_server(round_ind=round_ind + 1)
+                store_results_to_csv(round_ind=round_ind + 1,
                                      metrics=server_metrics,
                                      energy=energy_used,
                                      time_taken=time_taken,
                                      metrics_dir='metrics',
-                                     sim_id=sim_id)
+                                     sim_id=self.sim_id)
 
         self.federation_logger.print_it(' Federation rounds finished! '.center(60, '-'))
         # Save server model
@@ -110,7 +107,7 @@ class Federation:
                 tot_time = max_update_latency
         return tot_energy, tot_time
 
-    def test_workers_and_server(self, round_ind, sim_id):
+    def test_workers_and_server(self, round_ind):
         test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
                                                          round_ind=round_ind)
         print_workers_metrics(logger=self.federation_logger,
@@ -126,7 +123,7 @@ class Federation:
                              metrics=test_metrics,
                              partition='test' if not self.use_val_set else 'val',
                              metrics_dir='metrics',
-                             sim_id=sim_id,
+                             sim_id=self.sim_id,
                              metrics_name='{}_{}'.format('federation', 'performance'))
         return server_test_metrics
 
@@ -148,10 +145,7 @@ class Federation:
         logger = get_logger(node_type='server',
                             node_id='server',
                             log_folder=os.path.join('logs',
-                                                    self.dataset,
-                                                    '{}_workers'.format(self.n_workers),
-                                                    'spw={}'.format(self.max_spw),
-                                                    'mode={}'.format(self.sampling_mode)))
+                                                    self.sim_id))
         if self.dataset == 'sent140':
             indexization = self.gather_indexization()
         else:
@@ -244,10 +238,7 @@ class Federation:
         loggers = [get_logger(node_type='worker',
                               node_id=w,
                               log_folder=os.path.join('logs',
-                                                      self.dataset,
-                                                      '{}_workers'.format(self.n_workers),
-                                                      'spw={}'.format(self.max_spw),
-                                                      'mode={}'.format(self.sampling_mode)))
+                                                      self.sim_id))
                    for w in workers_ids]
         if self.dataset == 'sent140':
             indexization = self.gather_indexization()

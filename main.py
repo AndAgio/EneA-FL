@@ -78,6 +78,8 @@ def main():
 
     random_bytes = os.urandom(64)
     sim_id = b64encode(random_bytes).decode('utf-8')[:6]
+    if '/' in sim_id:
+        sim_id.replace('0')
     store_sim_id_params(sim_id, args)
 
     my_federation = Federation(dataset=args.dataset,
@@ -87,7 +89,8 @@ def main():
                                max_spw=args.max_spw,
                                n_rounds=args.num_rounds,
                                use_val_set=args.use_val_set,
-                               random_workers_death=args.random_death)
+                               random_workers_death=args.random_death,
+                               sim_id=sim_id)
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
                       lr=args.lr,
@@ -96,8 +99,7 @@ def main():
                       alpha=args.alpha,
                       beta=args.beta,
                       k=args.k,
-                      max_update_latency=args.max_update_latency,
-                      sim_id=sim_id)
+                      max_update_latency=args.max_update_latency)
 
 
 if __name__ == '__main__':
