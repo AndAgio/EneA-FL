@@ -13,9 +13,11 @@ from enea_fl.utils import get_logger
 
 
 class Federation:
-    def __init__(self, dataset, n_workers, max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False):
+    def __init__(self, dataset, n_workers, device_types_distribution,
+                 max_spw=math.inf, sampling_mode='iid+sim', n_rounds=100, use_val_set=False):
         self.dataset = dataset
         self.n_workers = n_workers
+        self.device_types_distribution = device_types_distribution
         self.max_spw = max_spw
         self.sampling_mode = sampling_mode
         self.n_rounds = n_rounds
@@ -227,9 +229,8 @@ class Federation:
                                                                                max_spw=self.max_spw,
                                                                                eval_set=eval_set)
         device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu', 'orin_cpu', 'orin_gpu'],
-                                        size=len(workers_ids), replace=True)
-        # energy_policies = np.random.choice(['normal', 'conservative', 'extreme'],
-        #                                    size=len(workers), replace=True)
+                                        size=len(workers_ids), replace=True,
+                                        p=list(self.device_types_distribution.values()))
         energy_policies = np.random.choice(['normal'],
                                            size=len(workers_ids), replace=True)
         loggers = [get_logger(node_type='worker',
