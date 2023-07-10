@@ -55,11 +55,14 @@ def store_sim_id_params(sim_id, args):
 
 
 def define_device_type_distribution(args):
-    return {'raspberrypi': args.raspberry_p,
-            'nano_cpu': args.nano_cpu_p,
-            'nano_gpu': args.nano_gpu_p,
-            'orin_cpu': args.orin_cpu_p,
-            'orin_gpu': args.orin_gpu_p}
+    distribution = {'raspberrypi': args.raspberry_p,
+                    'nano_cpu': args.nano_cpu_p,
+                    'nano_gpu': args.nano_gpu_p,
+                    'orin_cpu': args.orin_cpu_p,
+                    'orin_gpu': args.orin_gpu_p}
+    assert sum(list(distribution.values())) == 1
+    return distribution
+
 
 def main():
     args = parse_args()
