@@ -128,7 +128,7 @@ class Federation:
         # self.federation_logger.print_it('self.target_value: {}'.format(self.target_value))
         assert self.target_type in ['rounds', 'acc', 'energy', 'time']
         if self.target_type == 'rounds':
-            actual_value = round_ind
+            actual_value = round_ind + 1
             to_return = True if round_ind >= self.target_value - 1 else False
         elif self.target_type == 'acc':
             actual_value = accuracy
