@@ -178,6 +178,7 @@ class Server:
         self.updates = []
 
     def test_model_on_workers(self, workers_to_test=None, set_to_use='test', round_ind=-1, batch_size=10):
+        self.logger.print_it('test_model_on_workers batch: {}'.format(batch_size))
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers

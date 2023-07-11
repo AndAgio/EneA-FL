@@ -51,7 +51,7 @@ class Federation:
         self.federation_logger.print_it(' SIMULATION ID: {} '.format(self.sim_id).center(60, '-'))
         # Initial status
         self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
-        self.test_workers_and_server(round_ind=0)
+        self.test_workers_and_server(round_ind=0, batch_size=batch_size)
 
         # Simulate training
         round_ind = 0
@@ -149,6 +149,7 @@ class Federation:
         return to_return
 
     def test_workers_and_server(self, round_ind, batch_size=10):
+        self.federation_logger.print_it('test_workers_and_server batch: {}'.format(batch_size))
         test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
                                                          round_ind=round_ind,
                                                          batch_size=batch_size)
