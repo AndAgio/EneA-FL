@@ -9,7 +9,7 @@
 #     mv glove.6B.300d.txt ../../enea_fl/models/glove.6B.300d.txt
 # fi
 
-cd enea_fl/model || exit
+cd enea_fl/models || exit
 
 if [ ! -f 'glove.6B.50d.txt' ]; then
    wget http://nlp.stanford.edu/data/glove.6B.zip
