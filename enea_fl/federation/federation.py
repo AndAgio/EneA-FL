@@ -18,7 +18,8 @@ class Federation:
                  max_spw=math.inf, sampling_mode='iid+sim',
                  target_type='rounds', target_value=100,
                  use_val_set=False,
-                 random_workers_death=True, sim_id='000000'):
+                 random_workers_death=True, sim_id='000000',
+                 cuda_device=None):
         self.dataset = dataset
         self.n_workers = n_workers
         self.device_types_distribution = device_types_distribution
@@ -30,6 +31,7 @@ class Federation:
         self.use_val_set = use_val_set
         self.random_workers_death = random_workers_death
         self.sim_id = sim_id
+        self.cuda_device = cuda_device if cuda_device is not None else torch.device('cpu')
         self.clean_previous_loggers()
         self.federation_logger = get_logger(node_type='federation',
                                             node_id='federation',
@@ -93,7 +95,8 @@ class Federation:
                                  energy=energy_used,
                                  time_taken=time_taken,
                                  metrics_dir='metrics',
-                                 sim_id=self.sim_id)
+                                 sim_id=self.sim_id,
+                                 logger=self.federation_logger)
 
             reached_target = self.check_target(round_ind=round_ind,
                                                tot_energy=tot_energy_used,
@@ -124,8 +127,6 @@ class Federation:
         return tot_energy, tot_time
 
     def check_target(self, round_ind, tot_energy, time_taken, accuracy):
-        # self.federation_logger.print_it('self.target_type: {}'.format(self.target_type))
-        # self.federation_logger.print_it('self.target_value: {}'.format(self.target_value))
         assert self.target_type in ['rounds', 'acc', 'energy', 'time']
         if self.target_type == 'rounds':
             actual_value = round_ind + 1
@@ -168,17 +169,18 @@ class Federation:
         return server_test_metrics
 
     @staticmethod
-    def create_workers(workers, device_types, energy_policies, train_data, test_data, dataset, random_death,
-                       cuda_devices,
+    def create_workers(workers, device_types, energy_policies,
+                       train_data, test_data, dataset,
+                       random_death, cuda_device,
                        loggers=None, indexization=None):
         workers = [Worker(worker_id=u,
                           device_type=device_types[i],
                           energy_policy=energy_policies[i],
                           train_data=train_data[u],
                           eval_data=test_data[u],
-                          model=WorkerModel(dataset=dataset, indexization=indexization, device=cuda_devices[i]),
+                          model=WorkerModel(dataset=dataset, indexization=indexization, device=cuda_device),
                           random_death=random_death,
-                          cuda_device=cuda_devices[i],
+                          cuda_device=cuda_device,
                           logger=loggers[i]) for i, u in enumerate(workers)]
         return workers
 
@@ -229,8 +231,9 @@ class Federation:
                                                             sampling_mode='iid+sim',
                                                             max_spw=10000,
                                                             eval_set=eval_set)
-        cuda_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available() else 'cpu')
-        return Server(server_model=ServerModel(self.dataset, indexization=indexization, device=cuda_device),
+        return Server(server_model=ServerModel(self.dataset,
+                                               indexization=indexization,
+                                               device=self.cuda_device),
                       possible_workers=self.workers,
                       test_data=test_data['0'],
                       logger=logger)
@@ -273,8 +276,6 @@ class Federation:
                                                                                sampling_mode=self.sampling_mode,
                                                                                max_spw=self.max_spw,
                                                                                eval_set=eval_set)
-        cuda_devices = [torch.device('cuda:{}'.format(get_free_gpu())
-                                     if torch.cuda.is_available() else 'cpu') for _ in workers_ids]
         device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu', 'orin_cpu', 'orin_gpu'],
                                         size=len(workers_ids), replace=True,
                                         p=list(self.device_types_distribution.values()))
@@ -289,10 +290,16 @@ class Federation:
             indexization = self.gather_indexization()
         else:
             indexization = None
-        workers = Federation.create_workers(workers_ids, device_types, energy_policies,
-                                            train_data, test_data, self.dataset, self.random_workers_death,
-                                            cuda_devices,
-                                            loggers, indexization)
+        workers = Federation.create_workers(workers=workers_ids,
+                                            device_types=device_types,
+                                            energy_policies=energy_policies,
+                                            train_data=train_data,
+                                            test_data=test_data,
+                                            dataset=self.dataset,
+                                            random_death=self.random_workers_death,
+                                            cuda_device=self.cuda_device,
+                                            loggers=loggers,
+                                            indexization=indexization)
 
         for i, u in enumerate(workers_ids):
             self.federation_logger.print_it('Device {} is a {} '

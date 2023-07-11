@@ -53,6 +53,11 @@ def parse_args():
     parser.add_argument('--target_value', help='value of target to reach during training; ',
                         type=float, default=100)
 
+    parser.add_argument('--cuda', help='type of cuda device to use in simulation. '
+                                       'All federation will fit in a single cuda device; '
+                                       'options are: [cpu, 0, 1]',
+                        type=str, default='cpu')
+
     return parser.parse_args()
 
 
@@ -88,6 +93,9 @@ def main():
         sim_id = b64encode(random_bytes).decode('utf-8')[:6]
     store_sim_id_params(sim_id, args)
 
+    cuda_device = torch.device('cuda:{}'.format(args.cuda_device)
+                               if torch.cuda.is_available() and args.cuda_device != 'cpu' else 'cpu')
+
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
                                device_types_distribution=define_device_type_distribution(args),
@@ -97,7 +105,8 @@ def main():
                                target_value=args.target_value,
                                use_val_set=args.use_val_set,
                                random_workers_death=args.random_death,
-                               sim_id=sim_id)
+                               sim_id=sim_id,
+                               cuda_device=cuda_device)
     my_federation.run(clients_per_round=args.clients_per_round,
                       batch_size=args.batch_size,
                       lr=args.lr,
