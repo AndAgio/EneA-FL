@@ -16,12 +16,13 @@ from enea_fl.utils import DumbLogger
 class WorkerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu', lr=0.01):
         assert dataset in ['femnist', 'sent140']
+        self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
                              ' constructing WorkerModel objects for the Sent140 task!')
-        self.dataset = dataset
-        self.glove_array = glove_array
-        self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        if glove_array is not None:
+            self.glove_array = glove_array
+            self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
@@ -192,12 +193,13 @@ class WorkerModel:
 class ServerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu'):
         assert dataset in ['femnist', 'sent140']
+        self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
                              ' constructing WorkerModel objects for the Sent140 task!')
-        self.dataset = dataset
-        self.glove_array = glove_array
-        self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        if glove_array is not None:
+            self.glove_array = glove_array
+            self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
         self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
         self.processing_device = device
 
