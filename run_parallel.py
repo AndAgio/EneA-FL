@@ -12,6 +12,11 @@ def run_all_in_parallel(commands, files):
         p.wait()
 
 
+def run_all_sequential(commands, files):
+    os.makedirs('logs', exist_ok=True)
+    procs = [subprocess.check_call(commands[i], shell=True, stdout=open(files[i], "w")) for i in range(len(commands))]
+
+
 def run_alpha_beta():
     datasets = ["femnist", "sent140"]
     alphas = [i for i in np.arange(0, 1.05, 0.05)]
@@ -27,7 +32,8 @@ def run_alpha_beta():
                 for d in datasets
                 for i in range(len(alphas))]
     logfiles += ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
-    run_all_in_parallel(commands, logfiles)
+    # run_all_in_parallel(commands, logfiles)
+    run_all_sequential(commands, logfiles)
 
 
 def run_clients():
@@ -45,7 +51,8 @@ def run_clients():
                 for d in datasets
                 for client in clients
                 for policy in policies]
-    run_all_in_parallel(commands, logfiles)
+    # run_all_in_parallel(commands, logfiles)
+    run_all_sequential(commands, logfiles)
 
 
 # def run_k():
