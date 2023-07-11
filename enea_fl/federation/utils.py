@@ -123,15 +123,22 @@ def store_results_to_csv(round_ind, metrics, energy, time_taken, metrics_dir, si
         os.makedirs(metrics_dir, exist_ok=True)
     path = os.path.join(metrics_dir, 'final_metrics.csv'.format(sim_id))
     if os.path.exists(path):
-        data = pd.read_csv(path)
+        data = pd.read_csv(path, index_col=0)
     else:
-        columns = ['round'] + [key for key, _ in metrics.items()] + ['energy', 'time_taken']
+        columns = ['round'] + [key for key, _ in metrics.items()] + ['round_energy', 'tot_energy',
+                                                                     'round_time', 'tot_time']
         data = pd.DataFrame(columns=columns)
     new_row = {'round': round_ind}
     for key, value in metrics.items():
         new_row[key] = value
-    new_row['energy'] = energy
-    new_row['time_taken'] = time_taken
-    data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
+    new_row['round_energy'] = [energy]
+    new_row['round_time'] = [time_taken]
+    try:
+        new_row['tot_energy'] = [data['tot_energy'].iat[-1] + energy]
+        new_row['tot_time'] = [data['tot_time'].iat[-1] + time_taken]
+    except IndexError:
+        new_row['tot_energy'] = [energy]
+        new_row['tot_time'] = [time_taken]
+    data = pd.concat([data, pd.DataFrame(new_row)], ignore_index=True)
     data.to_csv(path)
 

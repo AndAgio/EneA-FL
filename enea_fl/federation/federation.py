@@ -95,8 +95,7 @@ class Federation:
                                  energy=energy_used,
                                  time_taken=time_taken,
                                  metrics_dir='metrics',
-                                 sim_id=self.sim_id,
-                                 logger=self.federation_logger)
+                                 sim_id=self.sim_id)
 
             reached_target = self.check_target(round_ind=round_ind,
                                                tot_energy=tot_energy_used,
