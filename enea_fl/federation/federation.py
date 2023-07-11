@@ -5,6 +5,8 @@ import random
 import numpy as np
 import math
 import torch
+from joblib import Parallel, delayed
+
 from .server import Server
 from .worker import Worker
 from .utils import print_workers_metrics, print_server_metrics, write_metrics_to_csv, store_results_to_csv
@@ -174,16 +176,24 @@ class Federation:
                        train_data, test_data, dataset,
                        random_death, cuda_device,
                        loggers=None, glove_array=None):
-        workers = [Worker(worker_id=u,
-                          device_type=device_types[i],
-                          energy_policy=energy_policies[i],
-                          train_data=train_data[u],
-                          eval_data=test_data[u],
-                          model=WorkerModel(dataset=dataset, glove_array=glove_array, device=cuda_device),
-                          random_death=random_death,
-                          cuda_device=cuda_device,
-                          logger=loggers[i]) for i, u in enumerate(workers)]
-        return workers
+        created_workers = []
+
+        def create_worker(i, u):
+            created_workers.append(Worker(worker_id=u,
+                                          device_type=device_types[i],
+                                          energy_policy=energy_policies[i],
+                                          train_data=train_data[u],
+                                          eval_data=test_data[u],
+                                          model=WorkerModel(dataset=dataset,
+                                                            glove_array=glove_array,
+                                                            device=cuda_device),
+                                          random_death=random_death,
+                                          cuda_device=cuda_device,
+                                          logger=loggers[i]))
+
+        Parallel(n_jobs=len(workers), prefer="threads")(delayed(create_worker)(i, u) for i, u in enumerate(workers))
+
+        return created_workers
 
     def create_server(self):
         self.federation_logger.print_it('Setting up server...')
