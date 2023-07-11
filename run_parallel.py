@@ -2,6 +2,7 @@ import os
 import subprocess
 import argparse
 import numpy as np
+import math
 
 
 def run_all_in_parallel(commands, files):
@@ -17,6 +18,14 @@ def run_all_sequential(commands, files):
     procs = [subprocess.check_call(commands[i], shell=True, stdout=open(files[i], "w")) for i in range(len(commands))]
 
 
+def run_in_batch(commands, logfiles):
+    batch = 10.
+    for i in range(math.ceil(len(commands) / batch)):
+        coms = commands[batch * i:batch * (i + 1)]
+        logs = logfiles[batch * i:batch * (i + 1)]
+        run_all_in_parallel(coms, logs)
+
+
 def run_alpha_beta():
     datasets = ["femnist", "sent140"]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
@@ -24,9 +33,11 @@ def run_alpha_beta():
                 "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
                 for d in datasets]
     logfiles = ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
+    print('Running all experiments in parallel for random policy over the two datasets')
     run_all_in_parallel(commands, logfiles)
 
     for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
         alphas = [i for i in np.arange(0, 1.05, 0.05)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
@@ -34,26 +45,25 @@ def run_alpha_beta():
                     for i in range(len(alphas))]
         logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(dataset, alphas[i], 1 - alphas[i])
                     for i in range(len(alphas))]
-        run_all_in_parallel(commands, logfiles)
+        run_in_batch(commands, logfiles)
 
 
 def run_clients():
     datasets = ["femnist", "sent140"]
-    clients = [i for i in range(10, 80, 5)]
     policies = ['random', 'energy_aware']
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--clients_per_round={} --lr=0.1 --policy={} --alpha=0.7 --beta=0.3"
-                "--target_type='rounds' --target_value=100".format(d, client, policy)
-                for d in datasets
-                for client in clients
-                for policy in policies]
     os.makedirs(os.path.join('logs', 'clients'), exist_ok=True)
-    logfiles = ["logs/clients/d={}-c={}-p={}.txt".format(d, client, policy)
-                for d in datasets
-                for client in clients
-                for policy in policies]
-    # run_all_in_parallel(commands, logfiles)
-    run_all_sequential(commands, logfiles)
+    for dataset in datasets:
+        for policy in policies:
+            print('Running all experiments in parallel for combination ({}, {})'.format(dataset, policy))
+            clients = [i for i in range(10, 85, 5)]
+            commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                        "--clients_per_round={} --lr=0.1 --policy={} --alpha=0.7 --beta=0.3"
+                        "--target_type='rounds' --target_value=100".format(dataset, client, policy)
+                        for client in clients]
+            logfiles = ["logs/clients/d={}-c={}-p={}.txt".format(dataset, client, policy)
+                        for client in clients]
+            run_in_batch(commands, logfiles)
+    # run_all_sequential(commands, logfiles)
 
 
 # def run_k():
