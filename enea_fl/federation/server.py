@@ -154,7 +154,7 @@ class Server:
 
         Parallel(n_jobs=len(workers), prefer="threads")(delayed(train_worker)(worker) for worker in workers)
 
-        self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
+        # self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
         self.logger.print_it(''.center(60, '-'))
         return sys_metrics
 
@@ -178,7 +178,6 @@ class Server:
         self.updates = []
 
     def test_model_on_workers(self, workers_to_test=None, set_to_use='test', round_ind=-1, batch_size=10):
-        self.logger.print_it('test_model_on_workers batch: {}'.format(batch_size))
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers

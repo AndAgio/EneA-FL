@@ -91,13 +91,11 @@ class Worker:
 
     def test_local(self, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing local model at round {} '.format(round_ind).center(60, '-'))
-        self.logger.print_it('test_local batch: {}'.format(batch_size))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_my_model(test_data=data, batch_size=batch_size)
 
     def test_global(self, model_to_test, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing global model at round {} '.format(round_ind).center(60, '-'))
-        self.logger.print_it('test_global batch: {}'.format(batch_size))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_final_model(final_model=model_to_test,
                                            test_data=data,

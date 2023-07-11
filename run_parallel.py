@@ -24,7 +24,7 @@ def run_in_batch(commands, logfiles):
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
         for cuda_device in range(0, 2):
-            coms = [com + ' --cuda={} --batch_size=512'.format(0 if 0 <= i < batch / 2 else 1)
+            coms = [com + ' --cuda={}'.format(0 if 0 <= i < batch / 2 else 1)
                     for i, com in enumerate(coms)]
         run_all_in_parallel(coms, logs)
 
@@ -33,8 +33,8 @@ def run_alpha_beta():
     datasets = ["femnist", "sent140"]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
-                for d in datasets]
+                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100  " \
+                "--batch_size=512".format(d) for d in datasets]
     logfiles = ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
     print('Running all experiments in parallel for random policy over the two datasets')
     run_all_in_parallel(commands, logfiles)
@@ -44,7 +44,9 @@ def run_alpha_beta():
         alphas = [i for i in np.arange(0, 1.05, 0.05)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
-                    "--target_type='rounds' --target_value=100".format(dataset, alphas[i], 1 - alphas[i])
+                    "--target_type='rounds' --target_value=100  --batch_size=512".format(dataset,
+                                                                                         alphas[i],
+                                                                                         1 - alphas[i])
                     for i in range(len(alphas))]
         logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(dataset, alphas[i], 1 - alphas[i])
                     for i in range(len(alphas))]
@@ -61,7 +63,7 @@ def run_clients():
             clients = [i for i in range(10, 85, 5)]
             commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                         "--clients_per_round={} --lr=0.1 --policy={} --alpha=0.7 --beta=0.3"
-                        "--target_type='rounds' --target_value=100".format(dataset, client, policy)
+                        "--target_type='rounds' --target_value=100 --batch_size=512".format(dataset, client, policy)
                         for client in clients]
             logfiles = ["logs/clients/d={}-c={}-p={}.txt".format(dataset, client, policy)
                         for client in clients]
