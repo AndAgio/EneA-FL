@@ -80,8 +80,12 @@ def read_data(train_data_dir, test_data_dir):
 #     vocab = {w: i for i, w in enumerate(embs['vocab'])}
 #     return word_emb_arr, indd, vocab
 
-def get_word_emb_arr(embs):
+def get_word_emb_arr(embs_path):
+    # print('embs_path: {}'.format(embs_path))
+    with open(embs_path, 'r') as file:
+        embs = json.load(file)
     print('Loaded word embeddings')
+    # print('embs: {}'.format(embs))
     vocab = embs['vocab']
     word_emb_arr = np.array(embs['emba'])
     indd = {}
