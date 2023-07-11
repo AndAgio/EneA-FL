@@ -93,8 +93,8 @@ def main():
         sim_id = b64encode(random_bytes).decode('utf-8')[:6]
     store_sim_id_params(sim_id, args)
 
-    cuda_device = torch.device('cuda:{}'.format(args.cuda_device)
-                               if torch.cuda.is_available() and args.cuda_device != 'cpu' else 'cpu')
+    cuda_device = torch.device('cuda:{}'.format(args.cuda)
+                               if torch.cuda.is_available() and args.cuda != 'cpu' else 'cpu')
 
     my_federation = Federation(dataset=args.dataset,
                                n_workers=args.num_workers,
