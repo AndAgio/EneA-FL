@@ -37,7 +37,7 @@ def run_alpha_beta():
                 "--batch_size=512".format(d) for d in datasets]
     logfiles = ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
     print('Running all experiments in parallel for random policy over the two datasets')
-    run_all_in_parallel(commands, logfiles)
+    run_in_batch(commands, logfiles)
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
