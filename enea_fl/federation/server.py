@@ -177,22 +177,22 @@ class Server:
         self.model.set_weights(Server.aggregate_model(received_model_updates))
         self.updates = []
 
-    def test_model_on_workers(self, workers_to_test=None, set_to_use='test', round_ind=-1):
+    def test_model_on_workers(self, workers_to_test=None, set_to_use='test', round_ind=-1, batch_size=10):
         metrics = {}
         if workers_to_test is None:
             workers_to_test = self.possible_workers
 
         def test_worker(worker):
             worker.set_weights(self.model.get_weights())
-            c_metrics = worker.test_global(self.get_model(), set_to_use, round_ind=round_ind)
+            c_metrics = worker.test_global(self.get_model(), set_to_use, round_ind=round_ind, batch_size=batch_size)
             metrics[worker.id] = c_metrics
 
         Parallel(n_jobs=len(workers_to_test), prefer="threads")(delayed(test_worker)(worker)
                                                                 for worker in workers_to_test)
         return metrics
 
-    def test_model_on_server(self):
-        metrics = self.model.test(test_data=self.local_test_data)
+    def test_model_on_server(self, batch_size=10):
+        metrics = self.model.test(test_data=self.local_test_data, batch_size=batch_size)
         return metrics
 
     def get_clients_info(self, workers):

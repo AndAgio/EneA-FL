@@ -19,12 +19,13 @@ def run_all_sequential(commands, files):
 
 
 def run_in_batch(commands, logfiles):
-    batch = 10.
+    batch = 2.
     for i in range(math.ceil(len(commands) / batch)):
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
         for cuda_device in range(0, 2):
-            coms = [com + ' --cuda={}'.format(0 if 0 <= i < batch / 2 else 1) for i, com in enumerate(coms)]
+            coms = [com + ' --cuda={} --batch_size=512'.format(0 if 0 <= i < batch / 2 else 1)
+                    for i, com in enumerate(coms)]
         run_all_in_parallel(coms, logs)
 
 

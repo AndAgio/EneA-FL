@@ -89,16 +89,17 @@ class Worker:
             tot_time += sample_time
         return tot_energy, tot_time
 
-    def test_local(self, set_to_use='test', round_ind=-1):
+    def test_local(self, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing local model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
-        return self.model.test_my_model(test_data=data)
+        return self.model.test_my_model(test_data=data, batch_size=batch_size)
 
-    def test_global(self, model_to_test, set_to_use='test', round_ind=-1):
+    def test_global(self, model_to_test, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing global model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_final_model(final_model=model_to_test,
-                                           test_data=data)
+                                           test_data=data,
+                                           batch_size=batch_size)
 
     def select_data_for_testing(self, set_to_use='test'):
         assert set_to_use in ['train', 'test', 'val']

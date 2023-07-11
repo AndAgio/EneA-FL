@@ -89,7 +89,8 @@ class Federation:
             self.server.update_model()
 
             # Test model
-            server_metrics = self.test_workers_and_server(round_ind=round_ind + 1)
+            server_metrics = self.test_workers_and_server(round_ind=round_ind + 1,
+                                                          batch_size=batch_size)
             store_results_to_csv(round_ind=round_ind + 1,
                                  metrics=server_metrics,
                                  energy=energy_used,
@@ -147,14 +148,15 @@ class Federation:
                                                                                          self.target_value))
         return to_return
 
-    def test_workers_and_server(self, round_ind):
+    def test_workers_and_server(self, round_ind, batch_size=10):
         test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
-                                                         round_ind=round_ind)
+                                                         round_ind=round_ind,
+                                                         batch_size=batch_size)
         print_workers_metrics(logger=self.federation_logger,
                               metrics=test_metrics,
                               weights=self.server.get_clients_info(self.server.get_all_workers())[1],
                               prefix='{}_'.format('test' if not self.use_val_set else 'val'))
-        server_test_metrics = self.server.test_model_on_server()
+        server_test_metrics = self.server.test_model_on_server(batch_size=batch_size)
         print_server_metrics(logger=self.federation_logger,
                              metrics={'server': server_test_metrics})
         test_metrics['server'] = server_test_metrics
