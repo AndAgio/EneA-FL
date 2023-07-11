@@ -14,20 +14,21 @@ from enea_fl.utils import DumbLogger
 
 
 class WorkerModel:
-    def __init__(self, dataset='femnist', indexization=None, device='cpu', lr=0.01):
+    def __init__(self, dataset='femnist', glove_array=None, device='cpu', lr=0.01):
         assert dataset in ['femnist', 'sent140']
-        if dataset == 'sent140' and indexization is None:
-            raise ValueError('Indexization should be a valid input when'
+        if dataset == 'sent140' and glove_array is None:
+            raise ValueError('Glove array should be a valid input when'
                              ' constructing WorkerModel objects for the Sent140 task!')
         self.dataset = dataset
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.glove_array = glove_array
+        self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
         self.processing_device = device
         self.logger = DumbLogger
-        self.indexization = indexization
 
     @property
     def size(self):
@@ -189,14 +190,15 @@ class WorkerModel:
 
 
 class ServerModel:
-    def __init__(self, dataset='femnist', indexization=None, device='cpu'):
+    def __init__(self, dataset='femnist', glove_array=None, device='cpu'):
         assert dataset in ['femnist', 'sent140']
-        if dataset == 'sent140' and indexization is None:
-            raise ValueError('Indexization should be a valid input when'
+        if dataset == 'sent140' and glove_array is None:
+            raise ValueError('Glove array should be a valid input when'
                              ' constructing WorkerModel objects for the Sent140 task!')
         self.dataset = dataset
-        self.indexization = indexization
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.glove_array = glove_array
+        self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
         self.processing_device = device
 
     @property

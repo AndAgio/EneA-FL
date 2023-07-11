@@ -8,23 +8,24 @@ import torch.nn.functional as t_func
 
 
 class CnnSent(nn.Module):
-    def __init__(self):
+    def __init__(self, embs=None):
         super(CnnSent, self).__init__()
         self.config = SentConfig()
-        try:
-            print("Loading GloVe embeddings [{}]...".format(self.config.embs_file))
-            with open(self.config.embs_file, 'r') as inf:
-                embs = json.load(inf)
-        except FileNotFoundError:
-            _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            with open(self.config.embs_file, 'r') as inf:
-                embs = json.load(inf)
+        if embs is None:
+            try:
+                print("Loading GloVe embeddings [{}]...".format(self.config.embs_file))
+                with open(self.config.embs_file, 'r') as inf:
+                    embs = json.load(inf)
+            except FileNotFoundError:
+                _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
+                with open(self.config.embs_file, 'r') as inf:
+                    embs = json.load(inf)
         self.embs = embs
         print("Loaded GloVe embeddings.")
-        vocab = embs['vocab']
+        vocab = self.embs['vocab']
         vocab_size = len(vocab)
         print("Vocab size: {}".format(vocab_size))
-        word_embeddings = torch.from_numpy(np.array(embs['emba'])).type(torch.FloatTensor)
+        word_embeddings = torch.from_numpy(np.array(self.embs['emba'])).type(torch.FloatTensor)
         word_embeddings_size = word_embeddings.shape[1]
         # Embedding Layer
         self.embeddings = nn.Embedding(vocab_size, word_embeddings_size)

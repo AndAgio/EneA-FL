@@ -94,7 +94,7 @@ def get_word_emb_arr(embs_path):
         indd[vocab[i]] = i
     vocab = {w: i for i, w in enumerate(embs['vocab'])}
     print('Done')
-    return word_emb_arr, indd, vocab
+    return embs, word_emb_arr, indd, vocab
 
 def split_line(line):
     return re.findall(r"[\w']+|[.,!?;]", line)

@@ -173,13 +173,13 @@ class Federation:
     def create_workers(workers, device_types, energy_policies,
                        train_data, test_data, dataset,
                        random_death, cuda_device,
-                       loggers=None, indexization=None):
+                       loggers=None, glove_array=None):
         workers = [Worker(worker_id=u,
                           device_type=device_types[i],
                           energy_policy=energy_policies[i],
                           train_data=train_data[u],
                           eval_data=test_data[u],
-                          model=WorkerModel(dataset=dataset, indexization=indexization, device=cuda_device),
+                          model=WorkerModel(dataset=dataset, glove_array=glove_array, device=cuda_device),
                           random_death=random_death,
                           cuda_device=cuda_device,
                           logger=loggers[i]) for i, u in enumerate(workers)]
@@ -192,9 +192,9 @@ class Federation:
                             log_folder=os.path.join('logs',
                                                     self.sim_id))
         if self.dataset == 'sent140':
-            indexization = self.gather_indexization()
+            glove_array = self.gather_indexization()
         else:
-            indexization = None
+            glove_array = None
         # Read data for server node as if it was a single worker to get server data
         eval_set = 'test' if not self.use_val_set else 'val'
         try:
@@ -233,7 +233,7 @@ class Federation:
                                                             max_spw=10000,
                                                             eval_set=eval_set)
         return Server(server_model=ServerModel(self.dataset,
-                                               indexization=indexization,
+                                               glove_array=glove_array,
                                                device=self.cuda_device),
                       possible_workers=self.workers,
                       test_data=test_data['0'],
@@ -288,9 +288,9 @@ class Federation:
                                                       self.sim_id))
                    for w in workers_ids]
         if self.dataset == 'sent140':
-            indexization = self.gather_indexization()
+            glove_array = self.gather_indexization()
         else:
-            indexization = None
+            glove_array = None
         workers = Federation.create_workers(workers=workers_ids,
                                             device_types=device_types,
                                             energy_policies=energy_policies,
@@ -300,7 +300,7 @@ class Federation:
                                             random_death=self.random_workers_death,
                                             cuda_device=self.cuda_device,
                                             loggers=loggers,
-                                            indexization=indexization)
+                                            glove_array=glove_array)
 
         for i, u in enumerate(workers_ids):
             self.federation_logger.print_it('Device {} is a {} '
@@ -333,8 +333,8 @@ class Federation:
     def gather_indexization(self):
         self.federation_logger.print_it('Reading word indexization from GloVe\'s json...')
         try:
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
+            glove_array = get_word_emb_arr('enea_fl/models/embs.json')
         except FileNotFoundError:
             _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-        return indd
+            glove_array = get_word_emb_arr('enea_fl/models/embs.json')
+        return glove_array
