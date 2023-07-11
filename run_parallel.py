@@ -19,21 +19,22 @@ def run_all_sequential(commands, files):
 
 def run_alpha_beta():
     datasets = ["femnist", "sent140"]
-    alphas = [i for i in np.arange(0, 1.05, 0.05)]
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
-                "--target_type='rounds' --target_value=100".format(d, alphas[i], 1 - alphas[i])
-                for d in datasets for i in range(len(alphas))]
-    commands += ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                 "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
-                 for d in datasets]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
-    logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(d, alphas[i], 1 - alphas[i])
-                for d in datasets
-                for i in range(len(alphas))]
-    logfiles += ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
-    # run_all_in_parallel(commands, logfiles)
-    run_all_sequential(commands, logfiles)
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100".format(d)
+                for d in datasets]
+    logfiles = ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
+    run_all_in_parallel(commands, logfiles)
+
+    for dataset in datasets:
+        alphas = [i for i in np.arange(0, 1.05, 0.05)]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
+                    "--target_type='rounds' --target_value=100".format(dataset, alphas[i], 1 - alphas[i])
+                    for i in range(len(alphas))]
+        logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(dataset, alphas[i], 1 - alphas[i])
+                    for i in range(len(alphas))]
+        run_all_in_parallel(commands, logfiles)
 
 
 def run_clients():
