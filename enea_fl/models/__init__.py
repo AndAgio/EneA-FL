@@ -1,4 +1,5 @@
 import math
+import copy
 
 from .femnist import CnnFemnist
 from .sent140 import CnnSent
@@ -42,13 +43,11 @@ class WorkerModel:
     def set_logger(self, logger):
         self.logger = logger
 
-    def set_weights(self, aggregated_numpy):
-        for i, param in enumerate(self.model.parameters()):
-            param.data = torch.from_numpy(aggregated_numpy[i]).type('torch.FloatTensor')
+    def set_weights(self, new_state_dict):
+        self.model.load_state_dict(new_state_dict)
 
     def get_weights(self):
-        return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                        dtype=object)
+        return copy.deepcopy(self.model.state_dict())
 
     def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
         self._optimizer.param_groups[0]['lr'] = lr
@@ -213,16 +212,13 @@ class ServerModel:
 
     def send_to(self, workers):
         for w in workers:
-            w.set_weights(np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                                   dtype=object))
+            w.set_weights(self.get_weights())
 
-    def set_weights(self, aggregated_numpy):
-        for i, param in enumerate(self.model.parameters()):
-            param.data = torch.from_numpy(aggregated_numpy[i]).type('torch.FloatTensor')
+    def set_weights(self, new_state_dict):
+        self.model.load_state_dict(new_state_dict)
 
     def get_weights(self):
-        return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                        dtype=object)
+        return copy.deepcopy(self.model.state_dict())
 
     def move_model_to_device(self, processing_device):
         self.processing_device = processing_device
@@ -262,4 +258,13 @@ class ServerModel:
             raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
 
     def create_copy(self):
-        return ServerModel(self.dataset, self.indexization)
+        try:
+            model = ServerModel(dataset=self.dataset,
+                                glove_array=self.glove_array,
+                                device=self.processing_device)
+        except AttributeError:
+            model = ServerModel(dataset=self.dataset,
+                                glove_array=None,
+                                device=self.processing_device)
+        model.set_weights(self.get_weights())
+        return model

@@ -1,5 +1,4 @@
 import numpy as np
-import copy
 import math
 import torch
 from joblib import Parallel, delayed
@@ -63,15 +62,23 @@ class Server:
         if accuracy_with_all is None:
             raise ValueError('Cannot compute metric without knowing model accuracy with all updates!')
         model_updates = [worker_model for (w_id, _, worker_model) in self.last_updates if w_id != identity]
-        self.logger.print_it('Computing accuracy with all updates except one. '
-                             'Updates length: {}'.format(len(model_updates)))
-        model = self.model.create_copy()
-        model.set_weights(Server.aggregate_model(model_updates))
-        accuracy_without_id = model.test(test_data=self.local_test_data)['accuracy']
+        # self.logger.print_it('Computing accuracy with all updates except one. '
+        #                      'Updates length: {}'.format(len(model_updates)))
+        model_with_all_but_one = self.model.create_copy()
+        model_with_all_but_one.set_weights(Server.aggregate_model(model_updates))
+        accuracy_without_id = model_with_all_but_one.test(test_data=self.local_test_data)['accuracy']
+        del model_with_all_but_one
         num = accuracy_with_all - accuracy_without_id
+        # Denominator
+        energies_used = [self.last_iteration_consumption[w_id]['energy_used']
+                         for w_id in list(self.last_iteration_consumption.keys())]
+        times_taken = [self.last_iteration_consumption[w_id]['time_taken']
+                       for w_id in list(self.last_iteration_consumption.keys())]
+        max_energy = max(energies_used)
+        max_time = max(times_taken)
         energy_used = self.last_iteration_consumption[identity]['energy_used']
         time_taken = self.last_iteration_consumption[identity]['time_taken']
-        den = alpha * energy_used + beta * time_taken
+        den = alpha * energy_used / max_energy + beta * time_taken / max_time
         metric = num / den
         dev_type = self.get_worker_by_id(identity).device_type
         ene_pol = self.get_worker_by_id(identity).energy_policy
@@ -90,11 +97,12 @@ class Server:
 
     def compute_accuracy_with_all_updates(self):
         received_model_updates = [worker_model for (_, _, worker_model) in self.last_updates]
-        self.logger.print_it('Computing accuracy with all updates. '
-                             'Updates length: {}'.format(len(received_model_updates)))
-        model = self.model.create_copy()
-        model.set_weights(Server.aggregate_model(received_model_updates))
-        accuracy_with_all = model.test(test_data=self.local_test_data)['accuracy']
+        # self.logger.print_it('Computing accuracy with all updates. '
+        #                      'Updates length: {}'.format(len(received_model_updates)))
+        model_with_all = self.model.create_copy()
+        model_with_all.set_weights(Server.aggregate_model(received_model_updates))
+        accuracy_with_all = model_with_all.test(test_data=self.local_test_data)['accuracy']
+        del model_with_all
         return accuracy_with_all
 
     def get_selected_workers(self):
@@ -142,7 +150,9 @@ class Server:
             sys_metrics[worker.id]['energy_used'] += energy_used
             self.last_iteration_consumption[worker.id]['energy_used'] = energy_used
             sys_metrics[worker.id]['time_taken'] += time_taken
-            self.last_iteration_consumption[worker.id]['time_taken'] = time_taken
+            self.last_iteration_consumption[worker.id]['time_taken'] = time_taken \
+                if (max_update_latency is not None and time_taken < max_update_latency) or max_update_latency is None \
+                else max_update_latency
             sys_metrics[worker.id]['local_computations'] = comp
             if (executed and max_update_latency is None) or (executed and time_taken < max_update_latency):
                 update = worker.get_weights()
@@ -154,23 +164,27 @@ class Server:
 
         Parallel(n_jobs=len(workers), prefer="threads")(delayed(train_worker)(worker) for worker in workers)
 
-        # self.logger.print_it('Obtained metrics: {}'.format(sys_metrics))
         self.logger.print_it(''.center(60, '-'))
         return sys_metrics
 
     # FED AVERAGE LIKE AGGREGATION
     @staticmethod
-    def aggregate_model(models):
-        model_aggregated = []
-        for param in models[0]:
-            model_aggregated += [np.zeros(param.shape)]
-        for model in models:
-            i = 0
-            for param in model:
-                model_aggregated[i] += param
-                i += 1
-        model_aggregated = np.array(model_aggregated, dtype=object) / len(models)
-        return model_aggregated
+    def aggregate_model(models_state_dict):
+        state_dict_keys = list(models_state_dict[0].keys())
+        aggregated_dict = {}
+        for key in state_dict_keys:
+            aggregated_dict[key] = torch.stack([model_dict[key].float() for model_dict in models_state_dict], 0).mean(0)
+        return aggregated_dict
+
+    # WEIGHTED FED AVERAGE LIKE AGGREGATION
+    @staticmethod
+    def aggregate_model_with_weights(models_state_dict, models_weight):
+        state_dict_keys = list(models_state_dict[0].keys())
+        aggregated_dict = {}
+        for key in state_dict_keys:
+            aggregated_dict[key] = torch.stack([model_dict[key].float() * models_weight[i]
+                                                for i, model_dict in enumerate(models_state_dict)], 0).mean(0)
+        return aggregated_dict
 
     def update_model(self):
         received_model_updates = [worker_model for (_, _, worker_model) in self.updates]
