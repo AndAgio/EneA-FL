@@ -51,7 +51,7 @@ def get_average_energy(device_behaviour_files, dataset_size, dataset='femnist'):
     a, b = popt
     std_energy = obj_func(dataset_size, a, b)
 
-    return avg_energy, std_energy
+    return abs(avg_energy), abs(std_energy)
 
 
 def compute_avg_std_time_per_sample(device_behaviour_files, dataset_size, dataset='femnist'):
