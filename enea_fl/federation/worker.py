@@ -7,7 +7,7 @@ from scipy.stats import expon
 
 from enea_fl.utils import DumbLogger, compute_total_number_of_flops, \
     read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
-from enea_fl.models import CnnFemnist
+from enea_fl.models import CnnFemnist, CnnMnist
 
 
 class Worker:
@@ -70,7 +70,12 @@ class Worker:
             return True, energy_used, time_taken, comp, num_train_samples
 
     def compute_consumed_energy_and_time(self, n_samples):
-        dataset = 'femnist' if isinstance(self.model.model, CnnFemnist) else 'sent140'
+        if isinstance(self.model.model, CnnFemnist):
+            dataset = 'femnist'
+        elif isinstance(self.model.model, CnnMnist):
+            dataset = 'mnist'
+        else:
+            dataset = 'sent140'
         device_behaviour_files = read_device_behaviours(device_type=self.device_type,
                                                         dataset=dataset)
         dataset_size = len(self.train_data['y'])

@@ -2,6 +2,7 @@ import math
 import copy
 
 from .femnist import CnnFemnist
+from .mnist import CnnMnist
 from .sent140 import CnnSent
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
@@ -16,7 +17,7 @@ from enea_fl.utils import DumbLogger
 
 class WorkerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu', lr=0.01):
-        assert dataset in ['femnist', 'sent140']
+        assert dataset in ['femnist', 'mnist', 'sent140']
         self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
@@ -24,7 +25,12 @@ class WorkerModel:
         if glove_array is not None:
             self.glove_array = glove_array
             self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
+        if dataset == 'femnist':
+            self.model = CnnFemnist()
+        elif dataset == 'mnist':
+            self.model = CnnMnist()
+        else:
+            self.model = CnnSent(embs=self.embs)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
@@ -149,7 +155,7 @@ class WorkerModel:
         }
 
     def preprocess_input_output(self, batch_input, batch_output):
-        if self.dataset == 'femnist':
+        if self.dataset in ['femnist', 'mnist']:
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
             inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
@@ -191,7 +197,7 @@ class WorkerModel:
 
 class ServerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu'):
-        assert dataset in ['femnist', 'sent140']
+        assert dataset in ['femnist', 'mnist', 'sent140']
         self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
@@ -199,7 +205,12 @@ class ServerModel:
         if glove_array is not None:
             self.glove_array = glove_array
             self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent(embs=self.embs)
+        if dataset == 'femnist':
+            self.model = CnnFemnist()
+        elif dataset == 'mnist':
+            self.model = CnnMnist()
+        else:
+            self.model = CnnSent(embs=self.embs)
         self.processing_device = device
 
     @property
@@ -243,7 +254,7 @@ class ServerModel:
         return {'accuracy': accuracy, 'f1': f1}
 
     def preprocess_input_output(self, batch_input, batch_output):
-        if self.dataset == 'femnist':
+        if self.dataset in ['femnist', 'mnist']:
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
             inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)

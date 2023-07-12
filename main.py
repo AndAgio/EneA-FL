@@ -12,7 +12,7 @@ from enea_fl.federation import Federation
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
+    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist', 'mnist'], required=True)
     parser.add_argument('--num_workers', help='number of rounds to simulate;', type=int, default=100)
     parser.add_argument('--max_spw', help='maximum number of samples for each worker;', type=int, default=math.inf)
     parser.add_argument('--sampling_mode', help='mode to federate dataset; '

@@ -149,8 +149,11 @@ for f in files:
         raw_list = list(data['user_data'].values())
         raw_x = [elem['x'] for elem in raw_list]
         raw_y = [elem['y'] for elem in raw_list]
+        # print(raw_x)
         x_list = [item for sublist in raw_x for item in sublist]  # flatten raw_x
         y_list = [item for sublist in raw_y for item in sublist]  # flatten raw_y
+        # print('\n\nnew_indices: {}\n\n'.format(new_indices))
+        # print('\n\nx_list: {}\n\n'.format(x_list))
         all_x_samples = [x_list[i] for i in new_indices]
         all_y_samples = [y_list[i] for i in new_indices]
         if labels_dist == 'iid':

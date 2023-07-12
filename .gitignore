@@ -20,6 +20,7 @@ glove.6B.300d.txt
 glove.*.txt
 metrics/
 *.ckpt
+logs/
 
 
 # Byte-compiled / optimized / DLL files

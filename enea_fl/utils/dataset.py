@@ -1,7 +1,7 @@
 
 
 def tot_samples_dataset(dataset='femnist', size='small'):
-    if dataset == 'femnist':
+    if dataset in ['femnist', 'mnist']:
         if size == 'small':
             return 438
         elif size == 'medium':

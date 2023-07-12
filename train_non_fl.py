@@ -12,13 +12,13 @@ import torch.optim as optim
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
-from enea_fl.models import CnnSent, CnnFemnist, SentConfig
+from enea_fl.models import CnnSent, CnnFemnist, CnnMnist, SentConfig
 from enea_fl.utils import get_logger, get_free_gpu
 
 
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True):
-        assert dataset in ['femnist', 'sent140']
+        assert dataset in ['femnist', 'mnist', 'sent140']
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.logger.print_it('Istantiating a Trainer object for {} dataset!'.format(dataset))
         self.dataset = dataset
@@ -27,7 +27,12 @@ class Trainer:
         self.logger.print_it('Cleaning previous logger!')
         self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        if dataset == 'femnist':
+            self.model = CnnFemnist()
+        elif dataset == 'mnist':
+            self.model = CnnMnist()
+        else:
+            self.model = CnnSent(embs=self.embs)
         self.logger.print_it('Model: {}'.format(self.model))
         self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
                                               else 'cpu')
