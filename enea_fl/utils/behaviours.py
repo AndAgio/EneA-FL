@@ -89,8 +89,5 @@ def compute_avg_std_time_per_sample(device_behaviour_files, dataset_size, datase
     a, b = popt
     std_time = obj_func(dataset_size, a, b)
 
-    print('avg_time: {}'.format(avg_time))
-    print('std_time: {}'.format(std_time))
-
-    return avg_time, std_time
+    return abs(avg_time), abs(std_time)
 
