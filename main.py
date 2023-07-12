@@ -66,8 +66,12 @@ def store_sim_id_params(sim_id, args):
     os.makedirs(metrics_dir, exist_ok=True)
     with open(os.path.join(metrics_dir, 'args.txt'), 'w') as f:
         json.dump(args.__dict__, f, indent=2)
-    print('Simulation with ID {} has arguments:\n{}'.format(sim_id,
-                                                            args.__dict__))
+    logs_dir = os.path.join('logs', sim_id)
+    os.makedirs(logs_dir, exist_ok=True)
+    with open(os.path.join(logs_dir, 'args.txt'), 'w') as f:
+        json.dump(args.__dict__, f, indent=2)
+    print('Simulation with ID {} has arguments:\n\t{}'.format(sim_id,
+                                                              args.__dict__))
 
 
 def define_device_type_distribution(args):
