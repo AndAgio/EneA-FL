@@ -72,6 +72,9 @@ def compute_avg_std_time_per_sample(device_behaviour_files, dataset_size, datase
         avg_times[size] = mu  # np.mean(np.asarray(times[size]))
         std_times[size] = std  # np.std(np.asarray(times[size]))
 
+    print('avg_times: {}'.format(avg_times))
+    print('std_times: {}'.format(std_times))
+
     def obj_func(x, a, b):
         return a * x + b
 
@@ -85,6 +88,9 @@ def compute_avg_std_time_per_sample(device_behaviour_files, dataset_size, datase
     popt, _ = curve_fit(obj_func, xs, ys)
     a, b = popt
     std_time = obj_func(dataset_size, a, b)
+
+    print('avg_time: {}'.format(avg_time))
+    print('std_time: {}'.format(std_time))
 
     return avg_time, std_time
 
