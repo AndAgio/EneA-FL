@@ -32,7 +32,7 @@ class Trainer:
         elif dataset == 'mnist':
             self.model = MnistModel()
         else:
-            self.model = SentModel(embs=self.embs)
+            self.model = SentModel()
         self.logger.print_it('Model: {}'.format(self.model))
         self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
                                               else 'cpu')
