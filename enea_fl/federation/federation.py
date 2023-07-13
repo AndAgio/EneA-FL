@@ -1,7 +1,6 @@
 import os
 import subprocess
 import shutil
-import random
 import numpy as np
 import math
 import torch
@@ -12,7 +11,7 @@ from .worker import Worker
 from .utils import print_workers_metrics, print_server_metrics, write_metrics_to_csv, store_results_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
 from enea_fl.models.utils import get_word_emb_arr
-from enea_fl.utils import get_logger, get_free_gpu
+from enea_fl.utils import get_logger
 
 
 class Federation:
@@ -99,6 +98,9 @@ class Federation:
                                  time_taken=time_taken,
                                  metrics_dir='metrics',
                                  sim_id=self.sim_id)
+
+            self.federation_logger.print_it('Total energy used: {:.3f} KJ'.format(tot_energy_used/(1000*1000)))
+            self.federation_logger.print_it('Total time taken: {:.2f} s'.format(tot_time_taken))
 
             reached_target = self.check_target(round_ind=round_ind,
                                                tot_energy=tot_energy_used,
