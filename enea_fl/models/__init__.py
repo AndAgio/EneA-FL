@@ -1,9 +1,9 @@
 import math
 import copy
 
-from .femnist import CnnFemnist
-from .mnist import CnnMnist
-from .sent140 import CnnSent
+from .femnist import FemnistModel
+from .mnist import MnistModel
+from .sent140 import SentModel
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
 
@@ -26,11 +26,11 @@ class WorkerModel:
             self.glove_array = glove_array
             self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
         if dataset == 'femnist':
-            self.model = CnnFemnist()
+            self.model = FemnistModel()
         elif dataset == 'mnist':
-            self.model = CnnMnist()
+            self.model = MnistModel()
         else:
-            self.model = CnnSent(embs=self.embs)
+            self.model = SentModel(embs=self.embs)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
@@ -137,8 +137,9 @@ class WorkerModel:
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 output = final_model(batch_input)
-                preds_softmax = torch.nn.functional.softmax(output, dim=1)
-                pred_labels = torch.argmax(preds_softmax, dim=1)
+                # preds_softmax = torch.nn.functional.softmax(output, dim=1)
+                # pred_labels = torch.argmax(preds_softmax, dim=1)
+                pred_labels = torch.argmax(output, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
                 counter += 1
@@ -206,11 +207,11 @@ class ServerModel:
             self.glove_array = glove_array
             self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
         if dataset == 'femnist':
-            self.model = CnnFemnist()
+            self.model = FemnistModel()
         elif dataset == 'mnist':
-            self.model = CnnMnist()
+            self.model = MnistModel()
         else:
-            self.model = CnnSent(embs=self.embs)
+            self.model = SentModel(embs=self.embs)
         self.processing_device = device
 
     @property
@@ -244,8 +245,9 @@ class ServerModel:
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 output = self.model(batch_input)
-                preds_softmax = torch.nn.functional.softmax(output, dim=1)
-                pred_labels = torch.argmax(preds_softmax, dim=1)
+                # preds_softmax = torch.nn.functional.softmax(output, dim=1)
+                # pred_labels = torch.argmax(preds_softmax, dim=1)
+                pred_labels = torch.argmax(output, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
             # Compute accuracy

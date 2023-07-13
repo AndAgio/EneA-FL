@@ -12,7 +12,7 @@ import torch.optim as optim
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
 from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
-from enea_fl.models import CnnSent, CnnFemnist, CnnMnist, SentConfig
+from enea_fl.models import SentModel, FemnistModel, MnistModel, SentConfig
 from enea_fl.utils import get_logger, get_free_gpu
 
 
@@ -28,11 +28,11 @@ class Trainer:
         self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
         if dataset == 'femnist':
-            self.model = CnnFemnist()
+            self.model = FemnistModel()
         elif dataset == 'mnist':
-            self.model = CnnMnist()
+            self.model = MnistModel()
         else:
-            self.model = CnnSent(embs=self.embs)
+            self.model = SentModel(embs=self.embs)
         self.logger.print_it('Model: {}'.format(self.model))
         self.processing_device = torch.device('cuda:{}'.format(get_free_gpu()) if torch.cuda.is_available()
                                               else 'cpu')

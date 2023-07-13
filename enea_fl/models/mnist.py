@@ -3,9 +3,9 @@ import torch.nn.functional as t_func
 from .config_files import MnistConfig
 
 
-class CnnMnist(nn.Module):
+class MnistModel(nn.Module):
     def __init__(self, ):
-        super(CnnMnist, self).__init__()
+        super(MnistModel, self).__init__()
         self.config = MnistConfig()
         # Convolution layers
         self.conv1 = nn.Conv2d(in_channels=self.config.image_shape[0],
