@@ -113,4 +113,5 @@ class LstmSent(nn.Module):
         return t_func.softmax(output, dim=1)
 
 
-SentModel = LstmSent
+SentModel = CnnSent
+# SentModel = LstmSent
