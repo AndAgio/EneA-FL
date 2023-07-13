@@ -25,7 +25,8 @@ def parse_args():
     parser.add_argument('--use_val_set', help='use validation set;', action='store_true')
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
 
-    parser.add_argument('--policy', help='workers selection policy;', type=str, choices=['random', 'energy_aware'],
+    parser.add_argument('--policy', help='workers selection policy;', type=str,
+                        choices=['random', 'energy_aware', 'acc_aware'],
                         required=False, default='energy_aware')
     parser.add_argument('--alpha', help='alpha parameter;', type=float, default=0.5, required=False)
     parser.add_argument('--beta', help='beta parameter;', type=float, default=0.5, required=False)

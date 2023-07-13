@@ -24,6 +24,9 @@ class Server:
         if policy == 'random':
             self.logger.print_it('Selecting workers based on random policy!')
             self.selected_workers = np.random.choice(self.possible_workers, num_workers, replace=False)
+        elif policy == 'acc_aware':
+            self.logger.print_it('Selecting workers based on accuracy policy!')
+            self.select_workers_based_on_accuracy(num_workers=num_workers, k=k)
         elif policy == 'energy_aware':
             self.logger.print_it('Selecting workers based on energy policy!')
             self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
@@ -47,28 +50,18 @@ class Server:
             metrics = {w_id: None for w_id in last_workers}
             acc_with_all = self.compute_accuracy_with_all_updates()
             for w_id in last_workers:
-                metrics[w_id] = self.compute_metric(identity=w_id,
-                                                    alpha=alpha,
-                                                    beta=beta,
-                                                    accuracy_with_all=acc_with_all)
+                metrics[w_id] = self.compute_energy_eff_metric(identity=w_id,
+                                                               accuracy_with_all=acc_with_all,
+                                                               alpha=alpha,
+                                                               beta=beta)
             metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
-            energy_workers_ids = list(list(metrics.keys())[:n_energy_workers])
-            energy_workers = [self.get_worker_by_id(w_id) for w_id in energy_workers_ids]
-            possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
-            other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
-            self.selected_workers = energy_workers + other_workers
+            self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+                                                                     n_best_workers=n_energy_workers,
+                                                                     n_random_workers=n_random_workers)
 
-    def compute_metric(self, identity, alpha=0.5, beta=0.5, accuracy_with_all=None):
-        if accuracy_with_all is None:
-            raise ValueError('Cannot compute metric without knowing model accuracy with all updates!')
-        model_updates = [worker_model for (w_id, _, worker_model) in self.last_updates if w_id != identity]
-        # self.logger.print_it('Computing accuracy with all updates except one. '
-        #                      'Updates length: {}'.format(len(model_updates)))
-        model_with_all_but_one = self.model.create_copy()
-        model_with_all_but_one.set_weights(Server.aggregate_model(model_updates))
-        accuracy_without_id = model_with_all_but_one.test(test_data=self.local_test_data)['accuracy']
-        del model_with_all_but_one
-        num = accuracy_with_all - accuracy_without_id
+    def compute_energy_eff_metric(self, identity, accuracy_with_all, alpha=0.5, beta=0.5):
+        num, accuracy_without_id = self.compute_acc_diff(identity=identity,
+                                                         accuracy_with_all=accuracy_with_all)
         # Denominator
         energies_used = [self.last_iteration_consumption[w_id]['energy_used']
                          for w_id in list(self.last_iteration_consumption.keys())]
@@ -94,6 +87,58 @@ class Server:
                                                                                           accuracy_with_all * 100,
                                                                                           metric))
         return metric
+
+    def select_workers_based_on_accuracy(self, num_workers=20, k=0.9):
+        last_workers = [w_id for (w_id, _, _) in self.last_updates]
+        if len(last_workers) == 1:
+            acc_workers = last_workers
+            n_random_workers = num_workers - len(acc_workers)
+            possible_other_workers = [worker for worker in self.possible_workers if worker not in acc_workers]
+            other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+            self.selected_workers = acc_workers + other_workers
+        else:
+            n_acc_workers = math.floor(len(last_workers) * k)
+            n_random_workers = num_workers - n_acc_workers
+            metrics = {w_id: None for w_id in last_workers}
+            acc_with_all = self.compute_accuracy_with_all_updates()
+            for w_id in last_workers:
+                metrics[w_id] = self.compute_accuracy_eff_metric(identity=w_id,
+                                                                 accuracy_with_all=acc_with_all)
+            self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+                                                                     n_best_workers=n_acc_workers,
+                                                                     n_random_workers=n_random_workers)
+
+    def compute_accuracy_eff_metric(self, identity, accuracy_with_all):
+        metric, accuracy_without_id = self.compute_acc_diff(identity=identity,
+                                                            accuracy_with_all=accuracy_with_all)
+        dev_type = self.get_worker_by_id(identity).device_type
+        ene_pol = self.get_worker_by_id(identity).energy_policy
+        self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                             'The accuracy without him is {:.3f} and with him is {:.3f}.\n'
+                             'Therefore, its accuracy effectiveness score is {:.3f}'.format(identity,
+                                                                                            dev_type.upper(),
+                                                                                            ene_pol.upper(),
+                                                                                            accuracy_without_id * 100,
+                                                                                            accuracy_with_all * 100,
+                                                                                            metric))
+        return metric
+
+    def select_workers_from_metrics(self, metrics, n_best_workers, n_random_workers):
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=True))
+        best_workers_ids = list(list(metrics.keys())[:n_best_workers])
+        best_workers = [self.get_worker_by_id(w_id) for w_id in best_workers_ids]
+        possible_other_workers = [worker for worker in self.possible_workers if worker not in best_workers]
+        other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+        return best_workers + other_workers
+
+    def compute_acc_diff(self, identity, accuracy_with_all):
+        model_updates = [worker_model for (w_id, _, worker_model) in self.last_updates if w_id != identity]
+        model_with_all_but_one = self.model.create_copy()
+        model_with_all_but_one.set_weights(Server.aggregate_model(model_updates))
+        accuracy_without_id = model_with_all_but_one.test(test_data=self.local_test_data)['accuracy']
+        del model_with_all_but_one
+        metric = accuracy_with_all - accuracy_without_id
+        return metric, accuracy_without_id
 
     def compute_accuracy_with_all_updates(self):
         received_model_updates = [worker_model for (_, _, worker_model) in self.last_updates]
