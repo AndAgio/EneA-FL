@@ -30,7 +30,7 @@ def run_in_batch(commands, logfiles):
 
 
 def run_alpha_beta():
-    datasets = ["femnist", "sent140"]
+    datasets = ["mnist", "sent140"]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='acc' --target_value=0.97  "
@@ -54,7 +54,7 @@ def run_alpha_beta():
 
 
 def run_clients():
-    datasets = ["femnist", "sent140"]
+    datasets = ["mnist", "sent140"]
     policies = ['random', 'energy_aware']
     os.makedirs(os.path.join('logs', 'clients'), exist_ok=True)
     for dataset in datasets:
