@@ -33,20 +33,20 @@ def run_alpha_beta():
     datasets = ["femnist", "sent140"]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=100  "
-                "--batch_size=512".format(d) for d in datasets]
+                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='acc' --target_value=0.97  "
+                "--batch_size=10 --seed=1234".format(d) for d in datasets]
     logfiles = ["logs/alphas/d={}-random.txt".format(d) for d in datasets]
     print('Running all experiments in parallel for random policy over the two datasets')
     run_in_batch(commands, logfiles)
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        alphas = [i for i in np.arange(0, 1.05, 0.05)]
+        alphas = [i for i in np.arange(0, 1.05, 0.1)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} "
-                    "--target_type='rounds' --target_value=100  --batch_size=512".format(dataset,
-                                                                                         alphas[i],
-                                                                                         1 - alphas[i])
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} --k=0.5"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10 --seed=1234".format(dataset,
+                                                                                                   alphas[i],
+                                                                                                   1 - alphas[i])
                     for i in range(len(alphas))]
         logfiles = ["logs/alphas/d={}-a={}-b={}.txt".format(dataset, alphas[i], 1 - alphas[i])
                     for i in range(len(alphas))]
