@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument('--orin_cpu_p', help='percentage of jetson orin with only cpu devices;',
                         type=float, default=0., required=False)
     parser.add_argument('--orin_gpu_p', help='percentage of jetson orin with gpu devices;',
-                        type=float, default=0.5, required=False)
+                        type=float, default=0.25, required=False)
 
     parser.add_argument('--random_death', help='randomly kill workers after some time;', action='store_true')
 
