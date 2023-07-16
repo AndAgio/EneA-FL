@@ -22,8 +22,8 @@ class Worker:
                  cuda_device='cpu',
                  logger=None):
         self.logger = logger if logger is not None else DumbLogger()
-        self._model = model
-        self._model.set_logger(logger)
+        self.model = model
+        self.model.set_logger(logger)
         self.id = worker_id
         self.device_type = device_type
         # gpu = True if device_type in ['nano', 'jetson'] else False
@@ -133,10 +133,11 @@ class Worker:
             return False
 
     def compute_local_energy_policy(self, batch_size=10):
+        epochs = 5
         if self.energy_policy == 'normal':
-            return math.ceil(self.num_train_samples / batch_size)
+            return math.ceil((epochs * self.num_train_samples) / batch_size)
         elif self.energy_policy == 'conservative':
-            return math.floor((self.num_train_samples / batch_size) / 10)
+            return math.floor(((epochs * self.num_train_samples) / batch_size) / 10)
         elif self.energy_policy == 'extreme':
             return 0
         else:
@@ -170,14 +171,6 @@ class Worker:
         if self.eval_data is not None:
             test_size = len(self.eval_data['y'])
         return train_size + test_size
-
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self, model):
-        self._model = model
 
     def save_model(self, checkpoints_folder='checkpoints'):
         path = '{}/{}/worker_model.ckpt'.format(checkpoints_folder, self.id)

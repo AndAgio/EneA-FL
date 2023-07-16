@@ -42,10 +42,6 @@ class WorkerModel:
     def size(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-    @property
-    def cur_model(self):
-        return self.model
-
     def set_logger(self, logger):
         self.logger = logger
 
@@ -217,10 +213,6 @@ class ServerModel:
     @property
     def size(self):
         return self.model.size
-
-    @property
-    def cur_model(self):
-        return self.model
 
     def send_to(self, workers):
         for w in workers:

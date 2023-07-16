@@ -87,8 +87,10 @@ class Federation:
                                  sim_id=self.sim_id,
                                  metrics_name='{}_{}'.format('federation', 'energy'))
 
+            print('pre: {}'.format(self.server.model.model.conv1.weight.cpu().detach().numpy()[0,0,0,0]))
             # Update server model
             self.server.update_model()
+            print('post: {}'.format(self.server.model.model.conv1.weight.cpu().detach().numpy()[0,0,0,0]))
 
             # Send last updated model to all workers
             self.server.send_model_to_all_workers()
