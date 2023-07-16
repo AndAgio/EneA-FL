@@ -52,6 +52,7 @@ class Federation:
         self.federation_logger.print_it(' SIMULATION ID: {} '.format(self.sim_id).center(60, '-'))
         # Initial status
         self.federation_logger.print_it(' Random Initialization '.center(60, '-'))
+        self.server.send_model_to_all_workers()
         self.test_workers_and_server(round_ind=0, batch_size=batch_size)
 
         # Simulate training
@@ -88,6 +89,9 @@ class Federation:
 
             # Update server model
             self.server.update_model()
+
+            # Send last updated model to all workers
+            self.server.send_model_to_all_workers()
 
             # Test model
             server_metrics = self.test_workers_and_server(round_ind=round_ind + 1,
@@ -152,24 +156,24 @@ class Federation:
         return to_return
 
     def test_workers_and_server(self, round_ind, batch_size=10):
-        # test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
-        #                                                  round_ind=round_ind,
-        #                                                  batch_size=batch_size)
-        # print_workers_metrics(logger=self.federation_logger,
-        #                       metrics=test_metrics,
-        #                       weights=self.server.get_clients_info(self.server.get_all_workers())[1],
-        #                       prefix='{}_'.format('test' if not self.use_val_set else 'val'))
+        test_metrics = self.server.test_model_on_workers(set_to_use='test' if not self.use_val_set else 'val',
+                                                         round_ind=round_ind,
+                                                         batch_size=batch_size)
+        print_workers_metrics(logger=self.federation_logger,
+                              metrics=test_metrics,
+                              weights=self.server.get_clients_info(self.server.get_all_workers())[1],
+                              prefix='{}_'.format('test' if not self.use_val_set else 'val'))
         server_test_metrics = self.server.test_model_on_server(batch_size=batch_size)
         print_server_metrics(logger=self.federation_logger,
                              metrics={'server': server_test_metrics})
-        # test_metrics['server'] = server_test_metrics
-        # write_metrics_to_csv(num_round=round_ind,
-        #                      ids=[w.id for w in self.server.get_all_workers()] + ['server'],
-        #                      metrics=test_metrics,
-        #                      partition='test' if not self.use_val_set else 'val',
-        #                      metrics_dir='metrics',
-        #                      sim_id=self.sim_id,
-        #                      metrics_name='{}_{}'.format('federation', 'performance'))
+        test_metrics['server'] = server_test_metrics
+        write_metrics_to_csv(num_round=round_ind,
+                             ids=[w.id for w in self.server.get_all_workers()] + ['server'],
+                             metrics=test_metrics,
+                             partition='test' if not self.use_val_set else 'val',
+                             metrics_dir='metrics',
+                             sim_id=self.sim_id,
+                             metrics_name='{}_{}'.format('federation', 'performance'))
         return server_test_metrics
 
     @staticmethod
