@@ -289,7 +289,8 @@ class Federation:
                                                                                sampling_mode=self.sampling_mode,
                                                                                max_spw=self.max_spw,
                                                                                eval_set=eval_set)
-        device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu', 'xavier_cpu', 'xavier_gpu', 'orin_cpu', 'orin_gpu'],
+        device_types = np.random.choice(['raspberrypi', 'nano_cpu', 'nano_gpu',
+                                         'xavier_cpu', 'xavier_gpu', 'orin_cpu', 'orin_gpu'],
                                         size=len(workers_ids), replace=True,
                                         p=list(self.device_types_distribution.values()))
         energy_policies = np.random.choice(['normal'],
