@@ -13,7 +13,7 @@ def read_device_behaviours(device_type='nano_gpu', dataset='femnist'):
     reports_dir = os.path.join(parent_path, 'reports')
 
     dev_board = device_type.split('_')[0]
-    if dev_board in ['nano', 'orin']:
+    if dev_board in ['nano', 'xavier', 'orin']:
         dev_board = 'jetson_{}'.format(dev_board)
     use_gpu = False if device_type in ['raspberrypi', 'nano_cpu', 'xavier_cpu', 'orin_cpu'] else True
 
