@@ -11,7 +11,7 @@ from .worker import Worker
 from .utils import print_workers_metrics, print_server_metrics, write_metrics_to_csv, store_results_to_csv
 from enea_fl.models import ServerModel, WorkerModel, read_data
 from enea_fl.models.utils import get_word_emb_arr
-from enea_fl.utils import get_logger
+from enea_fl.utils import get_logger, get_lr
 
 
 class Federation:
@@ -55,6 +55,9 @@ class Federation:
         self.server.send_model_to_all_workers()
         self.test_workers_and_server(round_ind=0, batch_size=batch_size)
 
+        # LR scheduler
+        start_lr = lr
+
         # Simulate training
         round_ind = 0
         tot_energy_used = 0.
@@ -65,10 +68,12 @@ class Federation:
                                                                                      clients_per_round)
                                             .center(60, '-'))
 
+            new_lr = get_lr(round_ind+1, start_lr, decay=0.1)
+
             # Simulate server model training on selected clients' data
             sys_metrics = self.server.train_model(num_workers=clients_per_round,
                                                   batch_size=batch_size,
-                                                  lr=lr,
+                                                  lr=new_lr,
                                                   round_ind=round_ind + 1,
                                                   policy=policy,
                                                   alpha=alpha,
@@ -94,6 +99,9 @@ class Federation:
 
             # Send last updated model to all workers
             self.server.send_model_to_all_workers()
+            for worker in self.workers:
+                print('worker id {}: {}'.format(worker.id,
+                                                worker.model.model.conv1.weight.cpu().detach().numpy()[0,0,0,0]))
 
             # Test model
             server_metrics = self.test_workers_and_server(round_ind=round_ind + 1,

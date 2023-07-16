@@ -53,12 +53,20 @@ class Worker:
             return False, 0, 0, 0, 0
         else:
             self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
-            train_steps = self.compute_local_energy_policy(batch_size=batch_size)
+            # train_steps = self.compute_local_energy_policy(batch_size=batch_size)
+            # metrics = self.model.train(train_data=self.train_data,
+            #                            train_steps=train_steps,
+            #                            batch_size=batch_size,
+            #                            lr=lr)
+            # num_train_samples = train_steps * batch_size
+            epochs = self.epochs_from_local_energy_policy()
+            train_steps = math.ceil((epochs * self.num_train_samples) / batch_size)
+            num_train_samples = train_steps * batch_size
             metrics = self.model.train(train_data=self.train_data,
-                                       train_steps=train_steps,
+                                       epochs=epochs,
+                                       tot_train_steps=train_steps,
                                        batch_size=batch_size,
                                        lr=lr)
-            num_train_samples = train_steps * batch_size
             energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
             comp = compute_total_number_of_flops(model=self.model.model,
                                                  batch_size=batch_size)
@@ -132,12 +140,21 @@ class Worker:
         else:
             return False
 
-    def compute_local_energy_policy(self, batch_size=10):
-        epochs = 5
+    def epochs_from_local_energy_policy(self):
         if self.energy_policy == 'normal':
-            return math.ceil((epochs * self.num_train_samples) / batch_size)
+            return 5
         elif self.energy_policy == 'conservative':
-            return math.floor(((epochs * self.num_train_samples) / batch_size) / 10)
+            return 1
+        elif self.energy_policy == 'extreme':
+            return 0
+        else:
+            raise ValueError('Energy policy "{}" is not available!'.format(self.energy_policy))
+
+    def compute_local_energy_policy(self, batch_size=10):
+        if self.energy_policy == 'normal':
+            return math.ceil(self.num_train_samples / batch_size)
+        elif self.energy_policy == 'conservative':
+            return math.floor((self.num_train_samples / batch_size) / 10)
         elif self.energy_policy == 'extreme':
             return 0
         else:

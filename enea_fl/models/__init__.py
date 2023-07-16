@@ -51,7 +51,7 @@ class WorkerModel:
     def get_weights(self):
         return copy.deepcopy(self.model.state_dict())
 
-    def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
+    def train(self, train_data, epochs=1, tot_train_steps=100, batch_size=10, lr=0.1):
         self._optimizer.param_groups[0]['lr'] = lr
         self.model.to(self.processing_device)
         self.model.train()
@@ -60,25 +60,24 @@ class WorkerModel:
         metrics = {}
         running_loss = 0.
         counter = 0
-        for batch_input, batch_label in batch_data(train_data, batch_size):
-            batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
-            self._optimizer.zero_grad()
-            outputs = self.model(batch_input)
-            loss = self.criterion(outputs, batch_label)
-            loss.backward()
-            self._optimizer.step()
-            running_loss += loss.item()
-            last_loss = loss.item()
-            counter += 1
-            pred_labels = torch.argmax(outputs, dim=1)
-            predictions += pred_labels.detach().cpu().numpy().tolist()
-            labels_list += batch_label.detach().cpu().numpy().tolist()
-            metrics = {'loss': running_loss / counter,
-                       'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
-                       'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-            self.print_message(index_batch=counter, total_batches=train_steps, metrics=metrics, mode='train')
-            if counter >= train_steps:
-                break
+        for epoch in range(epochs):
+            for batch_input, batch_label in batch_data(train_data, batch_size):
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                self._optimizer.zero_grad()
+                outputs = self.model(batch_input)
+                loss = self.criterion(outputs, batch_label)
+                loss.backward()
+                self._optimizer.step()
+                running_loss += loss.item()
+                last_loss = loss.item()
+                counter += 1
+                pred_labels = torch.argmax(outputs, dim=1)
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
+                metrics = {'loss': running_loss / counter,
+                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                           'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
+                self.print_message(index_batch=counter, total_batches=tot_train_steps, metrics=metrics, mode='train')
         final_loss = running_loss / counter
         return metrics
 
