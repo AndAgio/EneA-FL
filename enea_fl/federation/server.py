@@ -76,12 +76,12 @@ class Server:
         dev_type = self.get_worker_by_id(identity).device_type
         ene_pol = self.get_worker_by_id(identity).energy_policy
         self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-                             'It used {:.3f} Joules and took {:.3f} seconds to train.\n'
+                             'It used {:.3f} KJ and took {:.3f} seconds to train.\n'
                              'The accuracy without him is {:.3f} and with him is {:.3f}.\n'
                              'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
                                                                                           dev_type.upper(),
                                                                                           ene_pol.upper(),
-                                                                                          energy_used,
+                                                                                          energy_used/(1000*1000),
                                                                                           time_taken,
                                                                                           accuracy_without_id * 100,
                                                                                           accuracy_with_all * 100,
