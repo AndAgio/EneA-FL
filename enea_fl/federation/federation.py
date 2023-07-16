@@ -103,7 +103,7 @@ class Federation:
                                  metrics_dir='metrics',
                                  sim_id=self.sim_id)
 
-            self.federation_logger.print_it('Total energy used: {:.3f} KJ'.format(tot_energy_used/(1000*1000)))
+            self.federation_logger.print_it('Total energy used: {:.3f} KJ'.format(tot_energy_used / (1000 * 1000)))
             self.federation_logger.print_it('Total time taken: {:.2f} s'.format(tot_time_taken))
 
             reached_target = self.check_target(round_ind=round_ind,
@@ -150,9 +150,9 @@ class Federation:
         else:
             raise ValueError('Something wrong with target check!')
 
-        self.federation_logger.print_it('{} reached {}, while target value is {}'.format(self.target_type.upper(),
-                                                                                         actual_value,
-                                                                                         self.target_value))
+        self.federation_logger.print_it('{} reached {:.4f}, while target value is {}'.format(self.target_type.upper(),
+                                                                                             actual_value,
+                                                                                             self.target_value))
         return to_return
 
     def test_workers_and_server(self, round_ind, batch_size=10):
