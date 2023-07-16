@@ -121,8 +121,7 @@ class Federation:
         tot_energy = 0.
         tot_time = 0.
         for worker_id, metrics in sys_metrics.items():
-            if max_update_latency is None or (max_update_latency > 0 and metrics['time_taken'] < max_update_latency):
-                tot_energy += metrics['energy_used']
+            tot_energy += metrics['energy_used']
             if metrics['time_taken'] > tot_time:
                 tot_time = metrics['time_taken']
         if max_update_latency is not None and max_update_latency > 0:
