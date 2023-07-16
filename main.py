@@ -12,7 +12,8 @@ from enea_fl.federation import Federation
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist', 'mnist'], required=True)
+    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist', 'mnist'],
+                        required=True)
     parser.add_argument('--num_workers', help='number of rounds to simulate;', type=int, default=100)
     parser.add_argument('--max_spw', help='maximum number of samples for each worker;', type=int, default=math.inf)
     parser.add_argument('--sampling_mode', help='mode to federate dataset; '
@@ -20,7 +21,7 @@ def parse_args():
                         type=str, default='iid+sim')
     parser.add_argument('--clients_per_round', help='number of clients trained per round;', type=int, default=20)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
-    parser.add_argument('--seed', help='seed for random client sampling and batch splitting', type=int, default=0)
+    parser.add_argument('--seed', help='seed for random client sampling and batch splitting', type=int, default=1234)
     parser.add_argument('--metrics_name', help='name for metrics file;', type=str, default='metrics', required=False)
     parser.add_argument('--use_val_set', help='use validation set;', action='store_true')
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
