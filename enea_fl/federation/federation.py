@@ -68,7 +68,7 @@ class Federation:
                                                                                      clients_per_round)
                                             .center(60, '-'))
 
-            new_lr = get_lr(round_ind+1, start_lr, decay=0.1)
+            new_lr = get_lr(round_ind + 1, start_lr, decay=0.1)
 
             # Simulate server model training on selected clients' data
             sys_metrics = self.server.train_model(num_workers=clients_per_round,
@@ -146,6 +146,10 @@ class Federation:
         elif self.target_type == 'acc':
             actual_value = accuracy
             to_return = True if accuracy >= self.target_value else False
+            if not to_return and round_ind >= 30:
+                self.federation_logger.print_it('Target accuracy will probably never be reached.'
+                                                'Aborting federation to avoid getting stuck!')
+                to_return = True
         elif self.target_type == 'energy':
             actual_value = tot_energy
             to_return = True if tot_energy >= self.target_value else False
