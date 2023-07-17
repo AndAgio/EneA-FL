@@ -146,7 +146,7 @@ class Federation:
         elif self.target_type == 'acc':
             actual_value = accuracy
             to_return = True if accuracy >= self.target_value else False
-            if not to_return and round_ind >= 30:
+            if not to_return and round_ind + 1 >= 30:
                 self.federation_logger.print_it('Target accuracy will probably never be reached.'
                                                 'Aborting federation to avoid getting stuck!')
                 to_return = True

@@ -32,8 +32,10 @@ class WorkerModel:
         else:
             self.model = SentModel(embs=self.embs)
         self.lr = lr
-        self._optimizer = optim.SGD(params=self.model.parameters(),
-                                    lr=self.lr)
+        # self._optimizer = optim.SGD(params=self.model.parameters(),
+        #                             lr=self.lr)
+        self._optimizer = optim.Adam(params=self.model.parameters(),
+                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
         self.processing_device = device
         self.logger = DumbLogger
