@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from scipy.special import softmax
 import torch
 from joblib import Parallel, delayed
 from enea_fl.utils import DumbLogger
@@ -30,7 +31,7 @@ class Server:
         elif policy == 'energy_aware':
             self.logger.print_it('Selecting workers based on energy policy!')
             # self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
-            self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta)
+            self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
         else:
             raise ValueError('Policy "{}" not available!'.format(policy))
 
@@ -89,7 +90,7 @@ class Server:
     #                                                                                       metric))
     #     return metric
 
-    def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5):
+    def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
         assert alpha + beta == 1 and alpha >= 0 and beta >= 0
         metrics = {}
         for worker in self.possible_workers:
@@ -104,45 +105,59 @@ class Server:
         for w_id, metric in metrics.items():
             self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
                                                                                                       metric))
-        best_workers_ids = list(list(metrics.keys())[:num_workers])
-        self.selected_workers = [self.get_worker_by_id(w_id) for w_id in best_workers_ids]
+
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=False))
+        n_energy_workers = math.floor(num_workers * k)
+        n_random_workers = num_workers - n_energy_workers
+        self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+                                                                 n_best_workers=n_energy_workers,
+                                                                 n_random_workers=n_random_workers,
+                                                                 compute_p=True)
 
     def compute_energy_time_metric(self, identity, alpha=0.5, beta=0.5):
-        energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
-        times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
-        rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
-        rounds = sorted(list(set([r for device in rounds for r in device])))
-        self.logger.print_it('Rounds: {}'.format(rounds))
-        tot_metric = 0.
-        for round_ind in rounds:
-            in_round_energies_used = {w.id: energies_used[w.id][round_ind] for w in self.possible_workers}
-            in_round_time_taken = {w.id: times_taken[w.id][round_ind] for w in self.possible_workers}
-            max_energy = max(list(in_round_energies_used.values()))
-            max_time = max(list(in_round_time_taken.values()))
-            try:
-                energy_used = energies_used[identity][round_ind]
-                time_taken = times_taken[identity][round_ind]
-                if energy_used != 0 and time_taken != 0:
-                    tot_metric += alpha * energy_used / max_energy + beta * time_taken / max_time
-                else:
-                    tot_metric += np.inf
-            except AttributeError:
-                pass
-        metric = tot_metric / self.get_worker_by_id(identity).get_tot_rounds_enrolled()
-        dev_type = self.get_worker_by_id(identity).device_type
-        ene_pol = self.get_worker_by_id(identity).energy_policy
-        energy_history = self.get_worker_by_id(identity).get_energies_consumed()
-        time_history = self.get_worker_by_id(identity).get_times_taken()
-        self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-                             'Its energy history is {}.'
-                             'Its time history is {}.\n'
-                             'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
-                                                                                          dev_type.upper(),
-                                                                                          ene_pol.upper(),
-                                                                                          energy_history,
-                                                                                          time_history,
-                                                                                          metric))
-        return metric
+        if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'It has never been selected for a federation round!'.format(identity,
+                                                                                             dev_type.upper(),
+                                                                                             ene_pol.upper()))
+            return 0
+        else:
+            energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
+            times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
+            rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
+            rounds = sorted(list(set([r for device in rounds for r in device])))
+            tot_metric = 0.
+            for round_ind in rounds:
+                in_round_energies_used = {w.id: energies_used[w.id].get(round_ind, 0.) for w in self.possible_workers}
+                in_round_time_taken = {w.id: times_taken[w.id].get(round_ind, 0.) for w in self.possible_workers}
+                max_energy = max(list(in_round_energies_used.values()))
+                max_time = max(list(in_round_time_taken.values()))
+                try:
+                    energy_used = energies_used[identity][round_ind]
+                    time_taken = times_taken[identity][round_ind]
+                    if energy_used != 0 and time_taken != 0:
+                        tot_metric += alpha * energy_used / max_energy + beta * time_taken / max_time
+                    else:
+                        tot_metric += np.inf
+                except KeyError:
+                    pass
+            metric = tot_metric / self.get_worker_by_id(identity).get_tot_rounds_enrolled()
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            energy_history = self.get_worker_by_id(identity).get_energies_consumed()
+            time_history = self.get_worker_by_id(identity).get_times_taken()
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'Its energy history is {}.\n'
+                                 'Its time history is {}.\n'
+                                 'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
+                                                                                              dev_type.upper(),
+                                                                                              ene_pol.upper(),
+                                                                                              energy_history,
+                                                                                              time_history,
+                                                                                              metric))
+            return metric
 
     def select_workers_based_on_accuracy(self, num_workers=20, k=0.9):
         last_workers = [w_id for (w_id, _, _) in self.last_updates]
@@ -160,6 +175,7 @@ class Server:
             for w_id in last_workers:
                 metrics[w_id] = self.compute_accuracy_eff_metric(identity=w_id,
                                                                  accuracy_with_all=acc_with_all)
+            metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=True))
             self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
                                                                      n_best_workers=n_acc_workers,
                                                                      n_random_workers=n_random_workers)
@@ -179,12 +195,17 @@ class Server:
                                                                                             metric))
         return metric
 
-    def select_workers_from_metrics(self, metrics, n_best_workers, n_random_workers):
-        metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=True))
+    def select_workers_from_metrics(self, metrics, n_best_workers, n_random_workers, compute_p=False):
         best_workers_ids = list(list(metrics.keys())[:n_best_workers])
         best_workers = [self.get_worker_by_id(w_id) for w_id in best_workers_ids]
         possible_other_workers = [worker for worker in self.possible_workers if worker not in best_workers]
-        other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+        if compute_p:
+            rounds_used = {worker.id: worker.get_tot_rounds_enrolled() + 1 for worker in possible_other_workers}
+            tot_rounds = sum(list(rounds_used.values()))
+            p = softmax([tot_rounds/round_wid for wid, round_wid in rounds_used.items()])
+        else:
+            p = None
+        other_workers = np.random.choice(possible_other_workers, n_random_workers, p=p, replace=False).tolist()
         return best_workers + other_workers
 
     def compute_acc_diff(self, identity, accuracy_with_all):
