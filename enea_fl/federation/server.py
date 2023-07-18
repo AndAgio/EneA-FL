@@ -96,7 +96,7 @@ class Server:
             metrics[worker.id] = self.compute_energy_time_metric(identity=worker.id,
                                                                  alpha=alpha,
                                                                  beta=beta)
-        metrics_avg = np.mean([val for val in list(metrics.values()) if val != 0])
+        metrics_avg = np.mean([val for val in list(metrics.values()) if val != 0 and val != np.inf])
         for worker in self.possible_workers:
             if metrics[worker.id] == 0:
                 metrics[worker.id] = metrics_avg
@@ -108,22 +108,39 @@ class Server:
         self.selected_workers = [self.get_worker_by_id(w_id) for w_id in best_workers_ids]
 
     def compute_energy_time_metric(self, identity, alpha=0.5, beta=0.5):
-        energies_used = [w.get_tot_energy_consumed() for w in self.possible_workers]
-        times_taken = [w.get_tot_time_taken() for w in self.possible_workers]
-        max_energy = max(energies_used)
-        max_time = max(times_taken)
-        energy_used = self.get_worker_by_id(identity).get_tot_energy_consumed()
-        time_taken = self.get_worker_by_id(identity).get_tot_time_taken()
-        metric = alpha * energy_used / max_energy + beta * time_taken / max_time
+        energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
+        times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
+        rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
+        rounds = sorted(list(set([r for device in rounds for r in device])))
+        self.logger.print_it('Rounds: {}'.format(rounds))
+        tot_metric = 0.
+        for round_ind in rounds:
+            in_round_energies_used = {w.id: energies_used[w.id][round_ind] for w in self.possible_workers}
+            in_round_time_taken = {w.id: times_taken[w.id][round_ind] for w in self.possible_workers}
+            max_energy = max(list(in_round_energies_used.values()))
+            max_time = max(list(in_round_time_taken.values()))
+            try:
+                energy_used = energies_used[identity][round_ind]
+                time_taken = times_taken[identity][round_ind]
+                if energy_used != 0 and time_taken != 0:
+                    tot_metric += alpha * energy_used / max_energy + beta * time_taken / max_time
+                else:
+                    tot_metric += np.inf
+            except AttributeError:
+                pass
+        metric = tot_metric / self.get_worker_by_id(identity).get_tot_rounds_enrolled()
         dev_type = self.get_worker_by_id(identity).device_type
         ene_pol = self.get_worker_by_id(identity).energy_policy
+        energy_history = self.get_worker_by_id(identity).get_energies_consumed()
+        time_history = self.get_worker_by_id(identity).get_times_taken()
         self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-                             'It used {:.3f} KJ and took {:.3f} seconds to train.\n'
+                             'Its energy history is {}.'
+                             'Its time history is {}.\n'
                              'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
                                                                                           dev_type.upper(),
                                                                                           ene_pol.upper(),
-                                                                                          energy_used / (1000 * 1000),
-                                                                                          time_taken,
+                                                                                          energy_history,
+                                                                                          time_history,
                                                                                           metric))
         return metric
 
