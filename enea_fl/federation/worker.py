@@ -37,7 +37,10 @@ class Worker:
         self.train_data = train_data
         self.eval_data = eval_data
 
+        self.used_energies = {}
+        self.times_taken = {}
         self.tot_used_energy = 0.
+        self.tot_time_taken = 0.
         self.tot_rounds_enrolled = 0
         if random_death:
             mean_available_rounds = random.randint(0, 150)
@@ -72,6 +75,9 @@ class Worker:
                                                  batch_size=batch_size)
 
             self.tot_used_energy += energy_used
+            self.used_energies[round_ind] = energy_used
+            self.tot_time_taken += time_taken
+            self.times_taken[round_ind] = time_taken
             self.tot_rounds_enrolled += 1
             self.check_death()
 
@@ -159,6 +165,21 @@ class Worker:
             return 0
         else:
             raise ValueError('Energy policy "{}" is not available!'.format(self.energy_policy))
+
+    def get_tot_energy_consumed(self):
+        return self.tot_used_energy
+
+    def get_energies_consumed(self):
+        return self.used_energies
+
+    def get_tot_time_taken(self):
+        return self.tot_time_taken
+
+    def get_times_taken(self):
+        return self.times_taken
+
+    def get_tot_rounds_enrolled(self):
+        return self.tot_rounds_enrolled
 
     def set_weights(self, aggregated_numpy):
         self.model.set_weights(aggregated_numpy)

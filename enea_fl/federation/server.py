@@ -29,62 +29,101 @@ class Server:
             self.select_workers_based_on_accuracy(num_workers=num_workers, k=k)
         elif policy == 'energy_aware':
             self.logger.print_it('Selecting workers based on energy policy!')
-            self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
+            # self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
+            self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta)
         else:
             raise ValueError('Policy "{}" not available!'.format(policy))
 
         return [(w.num_train_samples, w.num_test_samples) for w in self.selected_workers]
 
-    def select_workers_based_on_energy(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
-        assert alpha + beta == 1 and alpha >= 0 and beta >= 0
-        last_workers = [w_id for (w_id, _, _) in self.last_updates]
-        if len(last_workers) == 1:
-            energy_workers = last_workers
-            n_random_workers = num_workers - len(energy_workers)
-            possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
-            other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
-            self.selected_workers = energy_workers + other_workers
-        else:
-            n_energy_workers = math.floor(len(last_workers) * k)
-            n_random_workers = num_workers - n_energy_workers
-            metrics = {w_id: None for w_id in last_workers}
-            acc_with_all = self.compute_accuracy_with_all_updates()
-            for w_id in last_workers:
-                metrics[w_id] = self.compute_energy_eff_metric(identity=w_id,
-                                                               accuracy_with_all=acc_with_all,
-                                                               alpha=alpha,
-                                                               beta=beta)
-            metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
-            self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
-                                                                     n_best_workers=n_energy_workers,
-                                                                     n_random_workers=n_random_workers)
+    # def select_workers_based_on_energy(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
+    #     assert alpha + beta == 1 and alpha >= 0 and beta >= 0
+    #     last_workers = [w_id for (w_id, _, _) in self.last_updates]
+    #     if len(last_workers) == 1:
+    #         energy_workers = last_workers
+    #         n_random_workers = num_workers - len(energy_workers)
+    #         possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
+    #         other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
+    #         self.selected_workers = energy_workers + other_workers
+    #     else:
+    #         n_energy_workers = math.floor(len(last_workers) * k)
+    #         n_random_workers = num_workers - n_energy_workers
+    #         metrics = {w_id: None for w_id in last_workers}
+    #         acc_with_all = self.compute_accuracy_with_all_updates()
+    #         for w_id in last_workers:
+    #             metrics[w_id] = self.compute_energy_eff_metric(identity=w_id,
+    #                                                            accuracy_with_all=acc_with_all,
+    #                                                            alpha=alpha,
+    #                                                            beta=beta)
+    #         metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
+    #         self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+    #                                                                  n_best_workers=n_energy_workers,
+    #                                                                  n_random_workers=n_random_workers)
 
-    def compute_energy_eff_metric(self, identity, accuracy_with_all, alpha=0.5, beta=0.5):
-        num, accuracy_without_id = self.compute_acc_diff(identity=identity,
-                                                         accuracy_with_all=accuracy_with_all)
-        # Denominator
-        energies_used = [self.last_iteration_consumption[w_id]['energy_used']
-                         for w_id in list(self.last_iteration_consumption.keys())]
-        times_taken = [self.last_iteration_consumption[w_id]['time_taken']
-                       for w_id in list(self.last_iteration_consumption.keys())]
+    # def compute_energy_eff_metric(self, identity, accuracy_with_all, alpha=0.5, beta=0.5):
+    #     num, accuracy_without_id = self.compute_acc_diff(identity=identity,
+    #                                                      accuracy_with_all=accuracy_with_all)
+    #     # Denominator
+    #     energies_used = [self.last_iteration_consumption[w_id]['energy_used']
+    #                      for w_id in list(self.last_iteration_consumption.keys())]
+    #     times_taken = [self.last_iteration_consumption[w_id]['time_taken']
+    #                    for w_id in list(self.last_iteration_consumption.keys())]
+    #     max_energy = max(energies_used)
+    #     max_time = max(times_taken)
+    #     energy_used = self.last_iteration_consumption[identity]['energy_used']
+    #     time_taken = self.last_iteration_consumption[identity]['time_taken']
+    #     den = alpha * energy_used / max_energy + beta * time_taken / max_time
+    #     metric = num / den
+    #     dev_type = self.get_worker_by_id(identity).device_type
+    #     ene_pol = self.get_worker_by_id(identity).energy_policy
+    #     self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+    #                          'It used {:.3f} KJ and took {:.3f} seconds to train.\n'
+    #                          'The accuracy without him is {:.3f} and with him is {:.3f}.\n'
+    #                          'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
+    #                                                                                       dev_type.upper(),
+    #                                                                                       ene_pol.upper(),
+    #                                                                                       energy_used/(1000*1000),
+    #                                                                                       time_taken,
+    #                                                                                       accuracy_without_id * 100,
+    #                                                                                       accuracy_with_all * 100,
+    #                                                                                       metric))
+    #     return metric
+
+    def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5):
+        assert alpha + beta == 1 and alpha >= 0 and beta >= 0
+        metrics = {}
+        for worker in self.possible_workers:
+            metrics[worker.id] = self.compute_energy_time_metric(identity=worker.id,
+                                                                 alpha=alpha,
+                                                                 beta=beta)
+        metrics_avg = np.mean([val for val in list(metrics.values()) if val != 0])
+        for worker in self.possible_workers:
+            if metrics[worker.id] == 0:
+                metrics[worker.id] = metrics_avg
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
+        for w_id, metric in metrics.items():
+            self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
+                                                                                                      metric))
+        best_workers_ids = list(list(metrics.keys())[:num_workers])
+        self.selected_workers = [self.get_worker_by_id(w_id) for w_id in best_workers_ids]
+
+    def compute_energy_time_metric(self, identity, alpha=0.5, beta=0.5):
+        energies_used = [w.get_tot_energy_consumed() for w in self.possible_workers]
+        times_taken = [w.get_tot_time_taken() for w in self.possible_workers]
         max_energy = max(energies_used)
         max_time = max(times_taken)
-        energy_used = self.last_iteration_consumption[identity]['energy_used']
-        time_taken = self.last_iteration_consumption[identity]['time_taken']
-        den = alpha * energy_used / max_energy + beta * time_taken / max_time
-        metric = num / den
+        energy_used = self.get_worker_by_id(identity).get_tot_energy_consumed()
+        time_taken = self.get_worker_by_id(identity).get_tot_time_taken()
+        metric = alpha * energy_used / max_energy + beta * time_taken / max_time
         dev_type = self.get_worker_by_id(identity).device_type
         ene_pol = self.get_worker_by_id(identity).energy_policy
         self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
                              'It used {:.3f} KJ and took {:.3f} seconds to train.\n'
-                             'The accuracy without him is {:.3f} and with him is {:.3f}.\n'
                              'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
                                                                                           dev_type.upper(),
                                                                                           ene_pol.upper(),
-                                                                                          energy_used/(1000*1000),
+                                                                                          energy_used / (1000 * 1000),
                                                                                           time_taken,
-                                                                                          accuracy_without_id * 100,
-                                                                                          accuracy_with_all * 100,
                                                                                           metric))
         return metric
 
