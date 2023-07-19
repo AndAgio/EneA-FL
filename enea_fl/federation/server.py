@@ -344,7 +344,7 @@ class Server:
     def save_model(self, checkpoints_folder='checkpoints'):
         # Save server model
         path = '{}/server_model.ckpt'.format(checkpoints_folder)
-        torch.save(self.model.cur_model, path)
+        torch.save(self.get_model(), path)
         return path
 
     def get_model(self):

@@ -119,7 +119,7 @@ class Federation:
 
         self.federation_logger.print_it(' Federation rounds finished! '.center(60, '-'))
         # Save server model
-        ckpt_path = os.path.join('checkpoints', self.dataset)
+        ckpt_path = os.path.join('checkpoints', self.sim_id)
         if not os.path.exists(ckpt_path):
             os.makedirs(ckpt_path)
         save_path = self.server.save_model(checkpoints_folder=ckpt_path)
