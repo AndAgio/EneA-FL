@@ -95,9 +95,9 @@ def define_device_type_distribution(args):
 def main():
     args = parse_args()
     # Set the random seed if provided (affects client sampling, and batching)
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    # random.seed(args.seed)
+    # np.random.seed(args.seed)
+    # torch.manual_seed(args.seed)
 
     sim_id = '######'
     while not sim_id.isalnum():
