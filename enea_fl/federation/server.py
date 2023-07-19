@@ -249,8 +249,9 @@ class Server:
                                 beta=beta,
                                 k=k)
         workers = self.selected_workers
-        w_ids = self.get_clients_info(workers)
-        self.logger.print_it('Selected workers: {}'.format(w_ids))
+        # w_ids = self.get_clients_info(workers)
+        # self.logger.print_it('Selected workers: {}'.format(w_ids))
+        self.logger.print_it('Selected workers: {}'.format(self.get_devices_and_samples_info(workers)))
         sys_metrics = {w.id: {'bytes_written': 0,
                               'bytes_read': 0,
                               'energy_used': 0,
@@ -340,6 +341,13 @@ class Server:
         ids = [w.id for w in workers]
         num_samples = {w.id: w.num_samples for w in workers}
         return ids, num_samples
+
+    def get_devices_and_samples_info(self, workers):
+        if workers is None:
+            workers = self.selected_workers
+        ids = [w.id for w in workers]
+        infos = {w.id: (w.device_type, w.num_samples) for w in workers}
+        return infos
 
     def save_model(self, checkpoints_folder='checkpoints'):
         # Save server model
