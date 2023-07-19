@@ -17,6 +17,7 @@ def write_metrics_to_csv(
         metrics,
         partition,
         metrics_dir,
+        sim_id,
         metrics_name):
     """Prints or appends the given metrics in a csv.
 
@@ -37,6 +38,7 @@ def write_metrics_to_csv(
         metrics_dir: String. Directory for the metrics file. May not exist.
         metrics_name: String. Filename for the metrics file. May not exist.
     """
+    metrics_dir = os.path.join(metrics_dir, sim_id)
     os.makedirs(metrics_dir, exist_ok=True)
     path = os.path.join(metrics_dir, '{}.csv'.format(metrics_name))
 
@@ -77,7 +79,7 @@ def get_metrics_names(metrics):
     return list(metrics_dict.keys())
 
 
-def print_metrics(logger, metrics, weights, prefix=''):
+def print_workers_metrics(logger, metrics, weights, prefix=''):
     """Prints weighted averages of the given metrics.
 
     Args:
@@ -91,10 +93,52 @@ def print_metrics(logger, metrics, weights, prefix=''):
     to_ret = None
     for metric in metric_names:
         ordered_metric = [metrics[c][metric] for c in sorted(metrics)]
-        logger.print_it('%s: %g, 10th percentile: %g, 50th percentile: %g, 90th percentile %g' \
-              % (prefix + metric,
-                 np.average(ordered_metric, weights=ordered_weights),
-                 np.percentile(ordered_metric, 10),
-                 np.percentile(ordered_metric, 50),
-                 np.percentile(ordered_metric, 90)))
+        logger.print_it('{}: {:.3f} %, 10th p: {:.3f} %,'
+                        ' 50th p: {:.3f} %, 90th p: {:.3f} %'.format(prefix + metric,
+                                                                np.average(ordered_metric,
+                                                                           weights=ordered_weights).item() * 100,
+                                                                np.percentile(ordered_metric, 10).item() * 100,
+                                                                np.percentile(ordered_metric, 50).item() * 100,
+                                                                np.percentile(ordered_metric, 90).item() * 100))
 
+
+def print_server_metrics(logger, metrics):
+    """Prints weighted averages of the given metrics.
+
+    Args:
+        metrics: dict with client ids as keys. Each entry is a dict
+            with the metrics of that client.
+        weights: dict with client ids as keys. Each entry is the weight
+            for that client.
+    """
+    message = 'server:'
+    metric_names = get_metrics_names(metrics)
+    for metric in metric_names:
+        message += ' {} = {:.3f} %'.format(metric, metrics['server'][metric]*100)
+    logger.print_it(message)
+
+
+def store_results_to_csv(round_ind, metrics, energy, time_taken, metrics_dir, sim_id):
+    metrics_dir = os.path.join(metrics_dir, sim_id)
+    if not os.path.exists(metrics_dir):
+        os.makedirs(metrics_dir, exist_ok=True)
+    path = os.path.join(metrics_dir, 'final_metrics.csv'.format(sim_id))
+    if os.path.exists(path):
+        data = pd.read_csv(path, index_col=0)
+    else:
+        columns = ['round'] + [key for key, _ in metrics.items()] + ['round_energy', 'tot_energy',
+                                                                     'round_time', 'tot_time']
+        data = pd.DataFrame(columns=columns)
+    new_row = {'round': round_ind}
+    for key, value in metrics.items():
+        new_row[key] = value
+    new_row['round_energy'] = [energy]
+    new_row['round_time'] = [time_taken]
+    try:
+        new_row['tot_energy'] = [data['tot_energy'].iat[-1] + energy]
+        new_row['tot_time'] = [data['tot_time'].iat[-1] + time_taken]
+    except IndexError:
+        new_row['tot_energy'] = [energy]
+        new_row['tot_time'] = [time_taken]
+    data = pd.concat([data, pd.DataFrame(new_row)], ignore_index=True)
+    data.to_csv(path)

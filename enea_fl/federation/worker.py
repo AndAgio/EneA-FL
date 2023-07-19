@@ -1,26 +1,33 @@
 import math
-import warnings
+import random
+
 import torch
-from enea_fl.utils import DumbLogger, get_free_gpu
+import numpy as np
+from scipy.stats import expon
+
+from enea_fl.utils import DumbLogger, compute_total_number_of_flops, \
+    read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
+from enea_fl.models import FemnistModel, MnistModel
 
 
 class Worker:
     def __init__(self,
                  worker_id,
-                 device_type='raspberry',
+                 device_type='raspberrypi',
                  energy_policy='normal',
                  train_data={'x': [], 'y': []},
                  eval_data={'x': [], 'y': []},
                  model=None,
+                 random_death=True,
+                 cuda_device='cpu',
                  logger=None):
         self.logger = logger if logger is not None else DumbLogger()
-        self._model = model
-        self._model.set_logger(logger)
+        self.model = model
+        self.model.set_logger(logger)
         self.id = worker_id
         self.device_type = device_type
-        gpu = True if device_type in ['nano', 'jetson'] else False
-        self.processing_device = torch.device('cuda:{}'.format(get_free_gpu())
-                                              if gpu and torch.cuda.is_available() else 'cpu')
+        # gpu = True if device_type in ['nano', 'jetson'] else False
+        self.processing_device = cuda_device
         self.logger.print_it('Worker {} is running on a {} and using '
                              'a {} for training and inference!'.format(self.id,
                                                                        self.device_type,
@@ -30,26 +37,88 @@ class Worker:
         self.train_data = train_data
         self.eval_data = eval_data
 
-    def train(self, batch_size=10, lr=0.1, round_ind=-1):
-        self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
-        train_steps = self.compute_local_energy_policy(batch_size=batch_size)
-        energy_used, time_taken, comp = self.model.train(train_data=self.train_data,
-                                                         train_steps=train_steps,
-                                                         batch_size=batch_size,
-                                                         lr=lr)
-        num_train_samples = train_steps * batch_size
-        return energy_used, time_taken, comp, num_train_samples
+        self.used_energies = {}
+        self.times_taken = {}
+        self.tot_used_energy = 0.
+        self.tot_time_taken = 0.
+        self.tot_rounds_enrolled = 0
+        if random_death:
+            mean_available_rounds = random.randint(0, 150)
+            self.available_rounds = math.ceil(expon.rvs(scale=mean_available_rounds, size=1).item())
+            self.logger.print_it('Worker {} will switch off after {} rounds!'.format(self.id,
+                                                                                     self.available_rounds))
+        else:
+            self.available_rounds = np.inf
 
-    def test_local(self, set_to_use='test', round_ind=-1):
+    def train(self, batch_size=10, lr=0.1, round_ind=-1):
+        if self.is_dead():
+            self.logger.print_it(' DEVICE IS DEAD! IT WILL NOT TRAIN THE MODEL! '.center(60, '-'))
+            return False, 0, 0, 0, 0
+        else:
+            self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
+            # train_steps = self.compute_local_energy_policy(batch_size=batch_size)
+            # metrics = self.model.train(train_data=self.train_data,
+            #                            train_steps=train_steps,
+            #                            batch_size=batch_size,
+            #                            lr=lr)
+            # num_train_samples = train_steps * batch_size
+            epochs = self.epochs_from_local_energy_policy()
+            train_steps = math.ceil((epochs * self.num_train_samples) / batch_size)
+            num_train_samples = train_steps * batch_size
+            metrics = self.model.train(train_data=self.train_data,
+                                       epochs=epochs,
+                                       tot_train_steps=train_steps,
+                                       batch_size=batch_size,
+                                       lr=lr)
+            energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
+            comp = compute_total_number_of_flops(model=self.model.model,
+                                                 batch_size=batch_size)
+
+            self.tot_used_energy += energy_used
+            self.used_energies[round_ind] = energy_used
+            self.tot_time_taken += time_taken
+            self.times_taken[round_ind] = time_taken
+            self.tot_rounds_enrolled += 1
+            self.check_death()
+
+            return True, energy_used, time_taken, comp, num_train_samples
+
+    def compute_consumed_energy_and_time(self, n_samples):
+        if isinstance(self.model.model, FemnistModel):
+            dataset = 'femnist'
+        elif isinstance(self.model.model, MnistModel):
+            dataset = 'mnist'
+        else:
+            dataset = 'sent140'
+        device_behaviour_files = read_device_behaviours(device_type=self.device_type,
+                                                        dataset=dataset)
+        dataset_size = len(self.train_data['y'])
+        avg_energy, std_energy = get_average_energy(device_behaviour_files,
+                                                    dataset_size=dataset_size,
+                                                    dataset=dataset)
+        avg_time_per_sample, std_time_per_sample = compute_avg_std_time_per_sample(device_behaviour_files,
+                                                                                   dataset_size=dataset_size,
+                                                                                   dataset=dataset)
+        tot_energy = 0.
+        tot_time = 0.
+        for i in range(n_samples):
+            sample_energy = np.random.normal(avg_energy, std_energy)
+            sample_time = np.random.normal(avg_time_per_sample, std_time_per_sample)
+            tot_energy += sample_energy * sample_time
+            tot_time += sample_time
+        return tot_energy, tot_time
+
+    def test_local(self, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing local model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
-        return self.model.test_my_model(test_data=data)
+        return self.model.test_my_model(test_data=data, batch_size=batch_size)
 
-    def test_global(self, model_to_test, set_to_use='test', round_ind=-1):
+    def test_global(self, model_to_test, set_to_use='test', round_ind=-1, batch_size=10):
         self.logger.print_it(' Testing global model at round {} '.format(round_ind).center(60, '-'))
         data = self.select_data_for_testing(set_to_use)
         return self.model.test_final_model(final_model=model_to_test,
-                                           test_data=data)
+                                           test_data=data,
+                                           batch_size=batch_size)
 
     def select_data_for_testing(self, set_to_use='test'):
         assert set_to_use in ['train', 'test', 'val']
@@ -61,6 +130,32 @@ class Worker:
             raise ValueError('Something wrong with data in testing!')
         return data
 
+    def check_death(self):
+        if self.tot_rounds_enrolled >= self.available_rounds:
+            self.kill()
+            return True
+        else:
+            return False
+
+    def kill(self):
+        self.energy_policy = 'extreme'
+
+    def is_dead(self):
+        if self.energy_policy == 'extreme':
+            return True
+        else:
+            return False
+
+    def epochs_from_local_energy_policy(self):
+        if self.energy_policy == 'normal':
+            return 5
+        elif self.energy_policy == 'conservative':
+            return 1
+        elif self.energy_policy == 'extreme':
+            return 0
+        else:
+            raise ValueError('Energy policy "{}" is not available!'.format(self.energy_policy))
+
     def compute_local_energy_policy(self, batch_size=10):
         if self.energy_policy == 'normal':
             return math.ceil(self.num_train_samples / batch_size)
@@ -70,6 +165,21 @@ class Worker:
             return 0
         else:
             raise ValueError('Energy policy "{}" is not available!'.format(self.energy_policy))
+
+    def get_tot_energy_consumed(self):
+        return self.tot_used_energy
+
+    def get_energies_consumed(self):
+        return self.used_energies
+
+    def get_tot_time_taken(self):
+        return self.tot_time_taken
+
+    def get_times_taken(self):
+        return self.times_taken
+
+    def get_tot_rounds_enrolled(self):
+        return self.tot_rounds_enrolled
 
     def set_weights(self, aggregated_numpy):
         self.model.set_weights(aggregated_numpy)
@@ -99,14 +209,6 @@ class Worker:
         if self.eval_data is not None:
             test_size = len(self.eval_data['y'])
         return train_size + test_size
-
-    @property
-    def model(self):
-        return self._model
-
-    @model.setter
-    def model(self, model):
-        self._model = model
 
     def save_model(self, checkpoints_folder='checkpoints'):
         path = '{}/{}/worker_model.ckpt'.format(checkpoints_folder, self.id)

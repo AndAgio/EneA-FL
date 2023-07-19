@@ -3,9 +3,9 @@ import torch.nn.functional as t_func
 from .config_files import FemnistConfig
 
 
-class CnnFemnist(nn.Module):
+class FemnistModel(nn.Module):
     def __init__(self, ):
-        super(CnnFemnist, self).__init__()
+        super(FemnistModel, self).__init__()
         self.config = FemnistConfig()
         # Convolution layers
         self.conv1 = nn.Conv2d(in_channels=self.config.image_shape[0],

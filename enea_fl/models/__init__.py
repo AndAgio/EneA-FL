@@ -1,12 +1,12 @@
 import math
+import copy
 
-from .femnist import CnnFemnist
-from .sent140 import CnnSent
+from .femnist import FemnistModel
+from .mnist import MnistModel
+from .sent140 import SentModel
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
 
-import time
-import subprocess
 import numpy as np
 import torch
 import torch.optim as optim
@@ -16,112 +16,106 @@ from enea_fl.utils import DumbLogger
 
 
 class WorkerModel:
-    def __init__(self, dataset='femnist', indexization=None, lr=0.01):
-        assert dataset in ['femnist', 'sent140']
-        if dataset == 'sent140' and indexization is None:
-            raise ValueError('Indexization should be a valid input when'
-                             ' constructing WorkerModel objects for the Sent140 task!')
+    def __init__(self, dataset='femnist', glove_array=None, device='cpu', lr=0.01):
+        assert dataset in ['femnist', 'mnist', 'sent140']
         self.dataset = dataset
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        if dataset == 'sent140' and glove_array is None:
+            raise ValueError('Glove array should be a valid input when'
+                             ' constructing WorkerModel objects for the Sent140 task!')
+        if glove_array is not None:
+            self.glove_array = glove_array
+            self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        if dataset == 'femnist':
+            self.model = FemnistModel()
+        elif dataset == 'mnist':
+            self.model = MnistModel()
+        else:
+            self.model = SentModel(embs=self.embs)
         self.lr = lr
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
-        self.processing_device = 'cpu'
+        self.processing_device = device
         self.logger = DumbLogger
-        self.indexization = indexization
 
     @property
     def size(self):
         return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-    @property
-    def cur_model(self):
-        return self.model
-
     def set_logger(self, logger):
         self.logger = logger
 
-    def set_weights(self, aggregated_numpy):
-        for i, param in enumerate(self.model.parameters()):
-            param.data = torch.from_numpy(aggregated_numpy[i]).type('torch.FloatTensor')
+    def set_weights(self, new_state_dict):
+        self.model.load_state_dict(new_state_dict)
 
     def get_weights(self):
-        return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                        dtype=object)
+        return copy.deepcopy(self.model.state_dict())
 
-    def train(self, train_data, train_steps=100, batch_size=10, lr=0.1):
-        start = time.time()
+    def train(self, train_data, epochs=1, tot_train_steps=100, batch_size=10, lr=0.1):
         self._optimizer.param_groups[0]['lr'] = lr
+        self.model.to(self.processing_device)
         self.model.train()
         predictions = []
         labels_list = []
+        metrics = {}
         running_loss = 0.
-        last_loss = 0.
         counter = 0
-        for batch_input, batch_label in batch_data(train_data, batch_size):
-            batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
-            self._optimizer.zero_grad()
-            outputs = self.model(batch_input)
-            loss = self.criterion(outputs, batch_label)
-            loss.backward()
-            self._optimizer.step()
-            running_loss += loss.item()
-            counter += 1
-            pred_labels = torch.argmax(outputs, dim=1)
-            predictions += pred_labels.detach().cpu().numpy().tolist()
-            labels_list += batch_label.detach().cpu().numpy().tolist()
-            metrics = {'loss': running_loss / counter,
-                       'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
-                       'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-            self.print_message(index_batch=counter, total_batches=train_steps, metrics=metrics, mode='train')
-            if counter >= train_steps:
-                break
-        final_loss = running_loss / counter
-        stop = time.time()
-        energy = 0.  # TODO: find how to compute energy here
-        comp = 0.  # TODO: find how to compute flops of model
-        return energy, stop - start, comp
-
-    def test_my_model(self, test_data, batch_size=10):
-        self.model.eval()
-        with torch.no_grad():
-            running_loss = 0.
-            predictions = []
-            labels_list = []
-            counter = 0.
-            for batch_input, batch_label in batch_data(test_data, batch_size):
+        for epoch in range(epochs):
+            for batch_input, batch_label in batch_data(train_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                self._optimizer.zero_grad()
                 outputs = self.model(batch_input)
-                running_loss += self.criterion(outputs, batch_label).item()
-                counter += 1.
-                pred_labels = torch.argmax(outputs, dim=1)
-                predictions += pred_labels.detach().cpu().numpy().tolist()
-                labels_list += batch_label.detach().cpu().numpy().tolist()
-                metrics = {'loss': running_loss / counter,
-                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
-                           'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
-                self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
-                                   metrics=metrics, mode='test local')
-            return {'loss': running_loss / counter}
-
-    def test_other_model(self, test_data, ids, other_model, results, batch_size=10):
-        other_model.eval()
-        with torch.no_grad():
-            running_loss = 0.
-            predictions = []
-            labels_list = []
-            counter = 0
-            for batch_input, batch_label in batch_data(test_data, batch_size):
-                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
-                outputs = other_model(batch_input)
-                running_loss += self.criterion(outputs, batch_label).item()
+                loss = self.criterion(outputs, batch_label)
+                loss.backward()
+                self._optimizer.step()
+                running_loss += loss.item()
+                last_loss = loss.item()
                 counter += 1
                 pred_labels = torch.argmax(outputs, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
                 metrics = {'loss': running_loss / counter,
                            'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                           'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
+                self.print_message(index_batch=counter, total_batches=tot_train_steps, metrics=metrics, mode='train')
+        final_loss = running_loss / counter
+        return metrics
+
+    def test_my_model(self, test_data, batch_size=10):
+        self.model.to(self.processing_device)
+        self.model.eval()
+        with torch.no_grad():
+            predictions = []
+            labels_list = []
+            counter = 0.
+            for batch_input, batch_label in batch_data(test_data, batch_size):
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                outputs = self.model(batch_input)
+                counter += 1.
+                pred_labels = torch.argmax(outputs, dim=1)
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                           'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
+                self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
+                                   metrics=metrics, mode='test local')
+            return metrics
+
+    def test_other_model(self, test_data, ids, other_model, results, batch_size=10):
+        other_model.to(self.processing_device)
+        other_model.eval()
+        with torch.no_grad():
+            predictions = []
+            labels_list = []
+            counter = 0
+            for batch_input, batch_label in batch_data(test_data, batch_size):
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                outputs = other_model(batch_input)
+                counter += 1
+                pred_labels = torch.argmax(outputs, dim=1)
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
                                    metrics=metrics, mode='test other')
@@ -131,21 +125,20 @@ class WorkerModel:
     def test_final_model(self, final_model, test_data, batch_size=10):
         predictions = []
         labels_list = []
+        final_model.to(self.processing_device)
         final_model.eval()
         with torch.no_grad():
-            running_loss = 0.
             counter = 0
             for batch_input, batch_label in batch_data(test_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 output = final_model(batch_input)
-                running_loss += self.criterion(output, batch_label).item()
-                preds_softmax = torch.nn.functional.softmax(output, dim=1)
-                pred_labels = torch.argmax(preds_softmax, dim=1)
+                # preds_softmax = torch.nn.functional.softmax(output, dim=1)
+                # pred_labels = torch.argmax(preds_softmax, dim=1)
+                pred_labels = torch.argmax(output, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
                 labels_list += batch_label.detach().cpu().numpy().tolist()
                 counter += 1
-                metrics = {'loss': running_loss / counter,
-                           'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
+                metrics = {'acc': accuracy_score(np.asarray(labels_list), np.asarray(predictions)),
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=math.ceil(len(test_data['y']) / batch_size),
                                    metrics=metrics, mode='test global')
@@ -153,13 +146,12 @@ class WorkerModel:
             f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
             accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
         return {
-            'loss': running_loss / counter,
             'accuracy': accuracy,
             'f1': f1
         }
 
     def preprocess_input_output(self, batch_input, batch_output):
-        if self.dataset == 'femnist':
+        if self.dataset in ['femnist', 'mnist']:
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
             inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
@@ -200,33 +192,83 @@ class WorkerModel:
 
 
 class ServerModel:
-    def __init__(self, dataset='femnist'):
-        assert dataset in ['femnist', 'sent140']
+    def __init__(self, dataset='femnist', glove_array=None, device='cpu'):
+        assert dataset in ['femnist', 'mnist', 'sent140']
         self.dataset = dataset
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
-        self.processing_device = 'cpu'
+        if dataset == 'sent140' and glove_array is None:
+            raise ValueError('Glove array should be a valid input when'
+                             ' constructing WorkerModel objects for the Sent140 task!')
+        if glove_array is not None:
+            self.glove_array = glove_array
+            self.embs, self.word_emb_arr, self.indexization, self.vocab = self.glove_array
+        if dataset == 'femnist':
+            self.model = FemnistModel()
+        elif dataset == 'mnist':
+            self.model = MnistModel()
+        else:
+            self.model = SentModel(embs=self.embs)
+        self.processing_device = device
 
     @property
     def size(self):
         return self.model.size
 
-    @property
-    def cur_model(self):
-        return self.model
-
     def send_to(self, workers):
         for w in workers:
-            w.set_weights(np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                                   dtype=object))
+            w.set_weights(self.get_weights())
 
-    def set_weights(self, aggregated_numpy):
-        for i, param in enumerate(self.model.parameters()):
-            param.data = torch.from_numpy(aggregated_numpy[i]).type('torch.FloatTensor')
+    def set_weights(self, new_state_dict):
+        self.model.load_state_dict(new_state_dict)
 
     def get_weights(self):
-        return np.array([param.detach().cpu().numpy() for param in self.model.parameters()],
-                        dtype=object)
+        return copy.deepcopy(self.model.state_dict())
 
     def move_model_to_device(self, processing_device):
         self.processing_device = processing_device
         self.model = self.model.to(self.processing_device)
+
+    def test(self, test_data, batch_size=10):
+        predictions = []
+        labels_list = []
+        self.model.to(self.processing_device)
+        self.model.eval()
+        with torch.no_grad():
+            for batch_input, batch_label in batch_data(test_data, batch_size):
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                output = self.model(batch_input)
+                # preds_softmax = torch.nn.functional.softmax(output, dim=1)
+                # pred_labels = torch.argmax(preds_softmax, dim=1)
+                pred_labels = torch.argmax(output, dim=1)
+                predictions += pred_labels.detach().cpu().numpy().tolist()
+                labels_list += batch_label.detach().cpu().numpy().tolist()
+            # Compute accuracy
+            f1 = f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')
+            accuracy = accuracy_score(np.asarray(labels_list), np.asarray(predictions))
+        return {'accuracy': accuracy, 'f1': f1}
+
+    def preprocess_input_output(self, batch_input, batch_output):
+        if self.dataset in ['femnist', 'mnist']:
+            inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
+        elif self.dataset == 'sent140':
+            x_batch = [e[4] for e in batch_input]
+            x_batch = [line_to_indices(e, self.indexization, max_words=SentConfig().max_sen_len) for e in x_batch]
+            inputs = torch.from_numpy(np.array(x_batch)).type(torch.LongTensor).permute(1, 0).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
+        else:
+            raise ValueError('Dataset "{}" is not available!'.format(self.dataset))
+
+    def create_copy(self):
+        try:
+            model = ServerModel(dataset=self.dataset,
+                                glove_array=self.glove_array,
+                                device=self.processing_device)
+        except AttributeError:
+            model = ServerModel(dataset=self.dataset,
+                                glove_array=None,
+                                device=self.processing_device)
+        model.set_weights(self.get_weights())
+        return model

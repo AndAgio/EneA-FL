@@ -68,7 +68,10 @@ if __name__ == "__main__":
     # TARGET = "128.195.55.244:9877"
 
     # jetson orin
-    TARGET = "128.195.55.253:9877"
+    # TARGET = "128.195.55.253:9877"
+
+    # jetson xavier
+    TARGET = "192.168.1.29:9877"
 
     metrics = []
     metrics.append("energon_total_in_power_mW")
