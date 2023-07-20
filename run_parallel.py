@@ -20,7 +20,7 @@ def run_all_sequential(commands, files):
 
 
 def run_in_batch(commands, logfiles):
-    batch = 2.
+    batch = 8.
     for i in range(math.ceil(len(commands) / batch)):
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
@@ -31,13 +31,15 @@ def run_in_batch(commands, logfiles):
 
 
 def run_alpha_beta():
-    datasets = ["mnist", "sent140"]
-    seeds = [random.randint(1000, 10000) for _ in range(5)]
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    seeds = [random.randint(1000, 10000) for _ in range(n_experiments_for_setup)]
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='acc' --target_value=0.97  "
+                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=30  "
                 "--batch_size=10".format(d) for d in datasets for _ in range(5)]
-    logfiles = ["logs/alphas/d={}-random-({}).txt".format(d, i) for d in datasets for i in range(5)]
+    logfiles = ["logs/alphas/d={}-random-({}).txt".format(d, i) for d in datasets for i in
+                range(n_experiments_for_setup)]
     print('Running all experiments in parallel for random policy over the two datasets')
     run_in_batch(commands, logfiles)
 
@@ -46,14 +48,14 @@ def run_alpha_beta():
         alphas = [i for i in np.arange(0, 1.05, 0.1)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} --k=0.9"
-                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
-                                                                                       alphas[i],
-                                                                                       1 - alphas[i])
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        alphas[i],
+                                                                                        1 - alphas[i])
                     for i in range(len(alphas))
-                    for _ in range(5)]
+                    for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/alphas/d={}-a={}-b={}-({}).txt".format(dataset, alphas[i], 1 - alphas[i], j)
                     for i in range(len(alphas))
-                    for j in range(5)]
+                    for j in range(n_experiments_for_setup)]
         run_in_batch(commands, logfiles)
 
 
