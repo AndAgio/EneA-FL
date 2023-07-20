@@ -43,12 +43,13 @@ class Worker:
         self.tot_time_taken = 0.
         self.tot_rounds_enrolled = 0
         if random_death:
-            mean_available_rounds = random.randint(0, 150)
+            mean_available_rounds = random.randint(0, 5)
             self.available_rounds = math.ceil(expon.rvs(scale=mean_available_rounds, size=1).item())
             self.logger.print_it('Worker {} will switch off after {} rounds!'.format(self.id,
                                                                                      self.available_rounds))
         else:
             self.available_rounds = np.inf
+        self.acc_diff_history = {}
 
     def train(self, batch_size=10, lr=0.1, round_ind=-1):
         if self.is_dead():
@@ -180,6 +181,12 @@ class Worker:
 
     def get_tot_rounds_enrolled(self):
         return self.tot_rounds_enrolled
+
+    def get_acc_diff_history(self):
+        return self.acc_diff_history
+
+    def update_acc_diff_history(self, round_ind, acc_diff):
+        self.acc_diff_history[round_ind] = acc_diff
 
     def set_weights(self, aggregated_numpy):
         self.model.set_weights(aggregated_numpy)
