@@ -5,6 +5,10 @@ import argparse
 import numpy as np
 import math
 
+BEST_ALPHA = 0.9
+BEST_BETA = 1 - BEST_ALPHA
+BEST_K = 0.9
+
 
 def run_all_in_parallel(commands, files):
     if not os.path.exists('logs'):
@@ -46,27 +50,123 @@ def run_alpha_beta():
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         alphas = [i for i in np.arange(0, 1.05, 0.1)]
+        betas = [j for j in np.arange(0, 100.05, 10.)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha={} --beta={} --k=0.9"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
                                                                                         alphas[i],
-                                                                                        1 - alphas[i])
+                                                                                        betas[j])
                     for i in range(len(alphas))
+                    for j in range(len(betas))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/alphas/d={}-a={}-b={}-({}).txt".format(dataset, alphas[i], 1 - alphas[i], j)
+        logfiles = ["logs/alphas/d={}-a={}-b={}-({}).txt".format(dataset, alphas[i], betas[j], k)
                     for i in range(len(alphas))
+                    for j in range(len(betas))
+                    for k in range(n_experiments_for_setup)]
+        run_in_batch(commands, logfiles)
+
+
+def run_k():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'ks'), exist_ok=True)
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=30  "
+                "--batch_size=10".format(d) for d in datasets for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/ks/d={}-random-({}).txt".format(d, i) for d in datasets for i in
+                range(n_experiments_for_setup)]
+    print('Running all experiments in parallel for random policy over the two datasets')
+    run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        ks = [i for i in np.arange(0, 1.05, 0.1)]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k={}"
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        ks[i])
+                    for i in range(len(ks))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/ks/d={}-k={}-({}).txt".format(dataset, ks[i], j)
+                    for i in range(len(ks))
+                    for j in range(n_experiments_for_setup)]
+        run_in_batch(commands, logfiles)
+
+
+def run_nsim():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'modes'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        modes = ['iid+sim', 'iid+nsim']
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        modes[i])
+                    for i in range(len(modes))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/modes/random-d={}-m={}-({}).txt".format(dataset, modes[i], j)
+                    for i in range(len(modes))
+                    for j in range(n_experiments_for_setup)]
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        modes = ['iid+sim', 'iid+nsim']
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        modes[i])
+                    for i in range(len(modes))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/modes/ene-d={}-m={}-({}).txt".format(dataset, modes[i], j)
+                    for i in range(len(modes))
                     for j in range(n_experiments_for_setup)]
         run_in_batch(commands, logfiles)
 
 
 def run_clients():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'modes'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        clients = [i for i in range(10, 90, 10)]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        clients[i])
+                    for i in range(len(clients))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/modes/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+                    for i in range(len(clients))
+                    for j in range(n_experiments_for_setup)]
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        clients = [i for i in range(10, 90, 10)]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
+                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
+                                                                                        clients[i])
+                    for i in range(len(clients))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/modes/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+                    for i in range(len(clients))
+                    for j in range(n_experiments_for_setup)]
+        run_in_batch(commands, logfiles)
+
+
+
     datasets = ["mnist", "sent140"]
     policies = ['random', 'energy_aware']
     os.makedirs(os.path.join('logs', 'clients'), exist_ok=True)
     for dataset in datasets:
         for policy in policies:
             print('Running all experiments in parallel for combination ({}, {})'.format(dataset, policy))
-            clients = [i for i in range(10, 85, 5)]
+            clients = [i for i in range(10, 90, 10)]
             commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                         "--clients_per_round={} --lr=0.1 --policy={} --alpha=0.7 --beta=0.3"
                         "--target_type='rounds' --target_value=100 --batch_size=512".format(dataset, client, policy)
@@ -99,6 +199,10 @@ if __name__ == '__main__':
 
     if options.experiment.lower() in ['alpha_beta']:
         run_alpha_beta()
+    elif options.experiment.lower() in ['k']:
+        run_k()
+    elif options.experiment.lower() in ['data_dist']:
+        run_nsim()
     elif options.experiment.lower() in ['client']:
         run_clients()
     else:

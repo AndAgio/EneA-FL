@@ -20,7 +20,7 @@ class Server:
     def add_new_worker(self, worker):
         self.possible_workers.append(worker)
 
-    def select_workers(self, num_workers=20, policy='random', alpha=0.5, beta=0.5, k=0.9):
+    def select_workers(self, num_workers=20, policy='random', alpha=0.5, beta=0.5, k=0.9, round_ind=-1):
         num_workers = min(num_workers, len(self.possible_workers))
         if policy == 'random':
             self.logger.print_it('Selecting workers based on random policy!')
@@ -31,7 +31,8 @@ class Server:
         elif policy == 'energy_aware':
             self.logger.print_it('Selecting workers based on energy policy!')
             # self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
-            self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
+            self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta, k=k,
+                                                        round_ind=round_ind)
         else:
             raise ValueError('Policy "{}" not available!'.format(policy))
 
@@ -90,13 +91,14 @@ class Server:
     #                                                                                       metric))
     #     return metric
 
-    def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
-        assert alpha + beta == 1 and alpha >= 0 and beta >= 0
+    def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9, round_ind=-1):
+        assert alpha >= 0 and beta >= 0
+        self.compute_and_update_acc_diff_for_all_workers(round_ind=round_ind)
         metrics = {}
         for worker in self.possible_workers:
-            metrics[worker.id] = self.compute_energy_time_metric(identity=worker.id,
-                                                                 alpha=alpha,
-                                                                 beta=beta)
+            metrics[worker.id] = self.compute_energy_time_acc_metric(identity=worker.id,
+                                                                     alpha=alpha,
+                                                                     beta=beta)
         metrics_avg = np.mean([val for val in list(metrics.values()) if val != 0 and val != np.inf])
         for worker in self.possible_workers:
             if metrics[worker.id] == 0:
@@ -114,7 +116,7 @@ class Server:
                                                                  n_random_workers=n_random_workers,
                                                                  compute_p=True)
 
-    def compute_energy_time_metric(self, identity, alpha=0.5, beta=0.5):
+    def compute_energy_time_acc_metric(self, identity, alpha=0.5, beta=0.5):
         if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
             dev_type = self.get_worker_by_id(identity).device_type
             ene_pol = self.get_worker_by_id(identity).energy_policy
@@ -137,8 +139,11 @@ class Server:
                 try:
                     energy_used = energies_used[identity][round_ind]
                     time_taken = times_taken[identity][round_ind]
+                    acc_diff = self.get_worker_by_id(identity).get_acc_diff_history()[round_ind]
                     if energy_used != 0 and time_taken != 0:
-                        tot_metric += alpha * energy_used / max_energy + beta * time_taken / max_time
+                        tot_metric += alpha * energy_used / max_energy + \
+                                      (1 - alpha) * time_taken / max_time - \
+                                      beta * acc_diff
                     else:
                         tot_metric += np.inf
                 except KeyError:
@@ -148,14 +153,17 @@ class Server:
             ene_pol = self.get_worker_by_id(identity).energy_policy
             energy_history = self.get_worker_by_id(identity).get_energies_consumed()
             time_history = self.get_worker_by_id(identity).get_times_taken()
+            acc_diff_history = self.get_worker_by_id(identity).get_acc_diff_history()
             self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
                                  'Its energy history is {}.\n'
                                  'Its time history is {}.\n'
+                                 'Its accuracy differential history is {}.\n'
                                  'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
                                                                                               dev_type.upper(),
                                                                                               ene_pol.upper(),
                                                                                               energy_history,
                                                                                               time_history,
+                                                                                              acc_diff_history,
                                                                                               metric))
             return metric
 
@@ -202,7 +210,7 @@ class Server:
         if compute_p:
             rounds_used = {worker.id: worker.get_tot_rounds_enrolled() + 1 for worker in possible_other_workers}
             tot_rounds = sum(list(rounds_used.values()))
-            p = softmax([tot_rounds/round_wid for wid, round_wid in rounds_used.items()])
+            p = softmax([tot_rounds / round_wid for wid, round_wid in rounds_used.items()])
         else:
             p = None
         other_workers = np.random.choice(possible_other_workers, n_random_workers, p=p, replace=False).tolist()
@@ -227,6 +235,14 @@ class Server:
         del model_with_all
         return accuracy_with_all
 
+    def compute_and_update_acc_diff_for_all_workers(self, round_ind):
+        acc_with_all = self.compute_accuracy_with_all_updates()
+        last_workers = [w_id for (w_id, _, _) in self.last_updates]
+        for w_id in last_workers:
+            acc_diff, _ = self.compute_acc_diff(identity=w_id, accuracy_with_all=acc_with_all)
+            self.get_worker_by_id(w_id).update_acc_diff_history(round_ind=round_ind-1,
+                                                                acc_diff=acc_diff)
+
     def get_selected_workers(self):
         return self.selected_workers
 
@@ -247,7 +263,8 @@ class Server:
                                 policy=policy if round_ind > 1 else 'random',
                                 alpha=alpha,
                                 beta=beta,
-                                k=k)
+                                k=k,
+                                round_ind=round_ind)
         workers = self.selected_workers
         # w_ids = self.get_clients_info(workers)
         # self.logger.print_it('Selected workers: {}'.format(w_ids))
