@@ -37,7 +37,7 @@ def run_alpha_beta():
     os.makedirs(os.path.join('logs', 'alphas'), exist_ok=True)
     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='random' --target_type='rounds' --target_value=30  "
-                "--batch_size=10".format(d) for d in datasets for _ in range(5)]
+                "--batch_size=10".format(d) for d in datasets for _ in range(n_experiments_for_setup)]
     logfiles = ["logs/alphas/d={}-random-({}).txt".format(d, i) for d in datasets for i in
                 range(n_experiments_for_setup)]
     print('Running all experiments in parallel for random policy over the two datasets')
