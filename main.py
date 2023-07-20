@@ -34,19 +34,19 @@ def parse_args():
     parser.add_argument('--k', help='k parameter;', type=float, default=0.9, required=False)
 
     parser.add_argument('--raspberry_p', help='percentage of raspberry pi devices;',
-                        type=float, default=0.25, required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--nano_cpu_p', help='percentage of jetson nano with only cpu devices;',
-                        type=float, default=0., required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--nano_gpu_p', help='percentage of jetson nano with gpu devices;',
-                        type=float, default=0.25, required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--xavier_cpu_p', help='percentage of jetson nano with only cpu devices;',
-                        type=float, default=0., required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--xavier_gpu_p', help='percentage of jetson nano with gpu devices;',
-                        type=float, default=0.25, required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--orin_cpu_p', help='percentage of jetson orin with only cpu devices;',
-                        type=float, default=0., required=False)
+                        type=float, default=1./7, required=False)
     parser.add_argument('--orin_gpu_p', help='percentage of jetson orin with gpu devices;',
-                        type=float, default=0.25, required=False)
+                        type=float, default=1./7, required=False)
 
     parser.add_argument('--random_death', help='randomly kill workers after some time;', action='store_true')
 
