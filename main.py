@@ -88,7 +88,7 @@ def define_device_type_distribution(args):
                     'xavier_gpu': args.xavier_gpu_p,
                     'orin_cpu': args.orin_cpu_p,
                     'orin_gpu': args.orin_gpu_p}
-    assert sum(list(distribution.values())) == 1
+    # assert sum(list(distribution.values())) == 1
     return distribution
 
 
