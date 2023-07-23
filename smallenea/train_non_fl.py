@@ -15,6 +15,25 @@ from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
 from enea_fl.models import CnnSent, CnnFemnist, SentConfig
 from enea_fl.utils import get_logger, get_free_gpu
 
+# SENT140
+# sleeping_time_selection = {
+#     0: 30,
+#     1: 60,
+#     2: 30,
+#     3: 0,
+#     4: 0,
+#     5: 30,
+# }
+
+# FEMNIST
+sleeping_time_selection = {
+    0: 0,
+    1: 30,
+    2: 30,
+    3: 60,
+    4: 0,
+    5: 0,
+}
 
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True, test_size=0.33, cpu=False):
@@ -113,7 +132,7 @@ class Trainer:
         test_data = {'x': x_test, 'y': y_test}
         return train_data, test_data
 
-    def train(self, epochs=100, batch_size=10):
+    def train(self, epochs=100, batch_size=10, simulate_selection=False):
         self.logger.print_it(' Start training '.center(60, '-'))
         self.epoch_timestamps.append(time.time())
         for epoch in range(epochs):
@@ -129,6 +148,11 @@ class Trainer:
                 continue
             self.logger.print_it(''.center(60, '-'))
             self.epoch_timestamps.append(time.time())
+            if simulate_selection:
+                # sleep a random time to simulate client selection for 10 seconds
+                self.logger.print_it(' Simulating client selection... sleeping for {} seconds '.format(sleeping_time_selection[epoch]).center(60, '-'))
+                self.logger.print_it(''.center(60, '-'))
+                time.sleep(sleeping_time_selection[epoch])
         self.logger.print_it(' Training finished! '.center(60, '-'))
 
 
@@ -282,6 +306,7 @@ def parse_args():
     parser.add_argument('--test_size', help='test size;', type=float, default=0.33)
     parser.add_argument('--iot', help='number of epochs;', type=bool, default=True)
     parser.add_argument('--cpu', help='number of epochs;', type=bool, default=False)
+    parser.add_argument('--simulate_selection', help='simulate client selection;', type=bool, default=False)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()
@@ -294,7 +319,8 @@ def main():
     my_trainer.warm_up_model()
     print("Training...")
     my_trainer.train(epochs=args.epochs,
-                     batch_size=args.batch_size)
+                     batch_size=args.batch_size,
+                     simulate_selection=args.simulate_selection)
     print("----------------- my_trainer.epoch_timestamps -----------------")
     for i, e in enumerate(my_trainer.epoch_timestamps):
         print(i, ")", e)
