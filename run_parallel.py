@@ -4,6 +4,7 @@ import subprocess
 import argparse
 import numpy as np
 import math
+import time
 
 BEST_ALPHA = 0.9
 BEST_BETA = 1 - BEST_ALPHA
@@ -25,7 +26,11 @@ def run_all_sequential(commands, files):
 
 def run_in_batch(commands, logfiles):
     batch = 8.
-    for i in range(math.ceil(len(commands) / batch)):
+    start_time = time.time()
+    tot_batches = math.ceil(len(commands) / batch)
+    for i in range(tot_batches):
+        print('Running batch {}/{}. Time taken: {}'.format(i, tot_batches, time.time()-start_time),
+              end='\r')
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
         for cuda_device in range(0, 2):
@@ -85,7 +90,7 @@ def run_k():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         ks = [i for i in np.arange(0, 1.05, 0.1)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k={}"
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k={}"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
                                                                                         ks[i])
                     for i in range(len(ks))
