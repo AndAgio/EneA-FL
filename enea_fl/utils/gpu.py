@@ -2,6 +2,9 @@ import torch
 import numpy as np
 
 def get_free_gpu():
+    # jetson devices do not have this attribute
+    if not hasattr(torch.cuda, "mem_get_info"):
+        return 0
     free_memories = []
     for i in range(torch.cuda.device_count()):
         device = torch.device('cuda:{}'.format(i))
