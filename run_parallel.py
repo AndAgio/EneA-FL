@@ -29,7 +29,7 @@ def run_in_batch(commands, logfiles):
     start_time = time.time()
     tot_batches = math.ceil(len(commands) / batch)
     for i in range(tot_batches):
-        print('Running batch {}/{}. Time taken: {}'.format(i, tot_batches, time.time()-start_time),
+        print('Running batch {}/{}. Time taken: {:.3f} s'.format(i, tot_batches, time.time()-start_time),
               end='\r')
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
