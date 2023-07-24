@@ -29,7 +29,7 @@ def run_in_batch(commands, logfiles):
     start_time = time.time()
     tot_batches = math.ceil(len(commands) / batch)
     for i in range(tot_batches):
-        print('Running batch {}/{}. Time taken: {:.3f} s'.format(i, tot_batches, time.time()-start_time),
+        print('Running batch {}/{}. Time taken: {:.3f} s'.format(i, tot_batches, time.time() - start_time),
               end='\r')
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
@@ -125,7 +125,7 @@ def run_nsim():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         modes = ['iid+sim', 'iid+nsim']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
                                                                                         modes[i])
                     for i in range(len(modes))
@@ -145,12 +145,12 @@ def run_clients():
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        clients[i])
+                    "--clients_per_round={} --lr=0.1 --policy='random'"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+                                                                                       clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -160,12 +160,12 @@ def run_clients():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        clients[i])
+                    "--clients_per_round={} --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+                                                                                       clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -195,7 +195,7 @@ def run_death():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         deaths = ['', '--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
                                                                                         deaths[i])
                     for i in range(len(deaths))
