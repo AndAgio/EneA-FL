@@ -11,12 +11,20 @@ import pandas as pd
 import json
 
 BASE_DIR = "metrics_server/"
-EXPERIMENTS = ['alpha_beta']
+EXPERIMENTS = ['time_budget']  # ['energy_budget']  # ['clients']  # ['k']  # ['alpha_beta']
 
 
 def plot_experiment(experiment):
     if experiment == 'alpha_beta':
         plot_alpha_beta()
+    elif experiment == 'k':
+        plot_k()
+    elif experiment == 'clients':
+        plot_clients()
+    elif experiment == 'energy_budget':
+        plot_energy_budget()
+    elif experiment == 'time_budget':
+        plot_time_budget()
 
 
 def plot_alpha_beta():
@@ -79,14 +87,15 @@ def plot_alpha_beta():
             perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)].append({'acc': list(perfs['accuracy'])[-1],
                                                                            'energy': list(perfs['tot_energy'])[-1],
                                                                            'time': list(perfs['tot_time'])[-1],
-                                              'rounds': rounds})
+                                                                           'rounds': rounds})
     print()
     xs = alphas
     ys = betas
     all_avg_energies = []
     for alpha in alphas:
         for beta in betas:
-            all_avg_energies.append(np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]]))
+            all_avg_energies.append(
+                np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]]))
     all_avg_energies.append(np.mean([item['energy'] / 2000000 for item in perf_dictionary['random']]))
     min_ene = min(all_avg_energies)
     max_ene = max(all_avg_energies)
@@ -103,7 +112,7 @@ def plot_alpha_beta():
             energies_avg['b'].append(beta)
             ene = np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]])
             energies_avg['size'].append(ene)
-            energies_avg['color'].append((ene - min_ene)/(max_ene - min_ene))
+            energies_avg['color'].append((ene - min_ene) / (max_ene - min_ene))
     energies_std = {'a': [],
                     'b': [],
                     'size': [],
@@ -113,15 +122,16 @@ def plot_alpha_beta():
             energies_std['a'].append(alpha)
             energies_std['b'].append(beta)
             ene = np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]])
-            tot = ene + np.std([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]])
+            tot = ene + np.std(
+                [item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)]])
             energies_std['size'].append(tot)
-            energies_std['color'].append((ene - min_ene)/(max_ene - min_ene))
+            energies_std['color'].append((ene - min_ene) / (max_ene - min_ene))
     print()
 
     import matplotlib.cm as cm
     from matplotlib.colors import Normalize
-    colors = [i/500 for i in np.arange(min_ene, max_ene, 100)]
-    norm = Normalize(vmin=min_ene.item()/500, vmax=max_ene.item()/500)
+    colors = [i / 500 for i in np.arange(min_ene, max_ene, 100)]
+    norm = Normalize(vmin=min_ene.item() / 500, vmax=max_ene.item() / 500)
     mappable = cm.ScalarMappable(norm=norm, cmap=cmap)
     mappable.set_array(colors)
 
@@ -134,8 +144,8 @@ def plot_alpha_beta():
     #             c=cmap(energies_std['color']),
     #             alpha=0.25, )
     for i in range(len(energies_avg['a'])):
-            plt.text(energies_avg['a'][i]-0.05, energies_avg['b'][i]-2,
-                     '{:.1f}'.format(energies_avg['size'][i]/500), fontsize=12)
+        plt.text(energies_avg['a'][i] - 0.05, energies_avg['b'][i] - 2,
+                 '{:.1f}'.format(energies_avg['size'][i] / 500), fontsize=12)
     plt.xlabel(r"$\alpha$", size=16)
     plt.xlim(-0.2, 1.2)
     plt.ylabel(r"$\beta$", size=16)
@@ -161,7 +171,7 @@ def plot_alpha_beta():
     comparison['y'].append(0)
     comparison['avg'].append(random_ene_avg)
     comparison['std'].append(random_ene_std)
-    comparison['color'].append((random_ene_avg - min_ene)/(max_ene - min_ene))
+    comparison['color'].append((random_ene_avg - min_ene) / (max_ene - min_ene))
 
     worst_ene_avg = np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)]])
     worst_ene_std = np.std([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)]])
@@ -169,7 +179,7 @@ def plot_alpha_beta():
     comparison['y'].append(0)
     comparison['avg'].append(worst_ene_avg)
     comparison['std'].append(worst_ene_std)
-    comparison['color'].append((worst_ene_avg - min_ene)/(max_ene - min_ene))
+    comparison['color'].append((worst_ene_avg - min_ene) / (max_ene - min_ene))
 
     best_ene_avg = np.mean([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)]])
     best_ene_std = np.std([item['energy'] / 2000000 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)]])
@@ -177,7 +187,7 @@ def plot_alpha_beta():
     comparison['y'].append(0)
     comparison['avg'].append(best_ene_avg)
     comparison['std'].append(best_ene_std)
-    comparison['color'].append((best_ene_avg - min_ene)/(max_ene - min_ene))
+    comparison['color'].append((best_ene_avg - min_ene) / (max_ene - min_ene))
 
     plt.scatter(comparison['x'], comparison['y'],
                 s=comparison['avg'],
@@ -188,8 +198,8 @@ def plot_alpha_beta():
     #             c=cmap(comparison['color']),
     #             alpha=0.25, )
     for i in range(len(comparison['x'])):
-        plt.text(comparison['x'][i]-0.05, comparison['y'][i]-0.02,
-                 '{:.1f}'.format(comparison['avg'][i]/500), fontsize=12)
+        plt.text(comparison['x'][i] - 0.05, comparison['y'][i] - 0.02,
+                 '{:.1f}'.format(comparison['avg'][i] / 500), fontsize=12)
     plt.xlim(-0.3, 1.2)
     plt.ylim(-0.5, 0.5)
     plt.title("Total energy spent by the federation", size=18)
@@ -218,9 +228,9 @@ def plot_alpha_beta():
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["green", "red"], N=1000)
 
     times_avg = {'a': [],
-                    'b': [],
-                    'size': [],
-                    'color': []}
+                 'b': [],
+                 'size': [],
+                 'color': []}
     for alpha in alphas:
         for beta in betas:
             times_avg['a'].append(alpha)
@@ -229,9 +239,9 @@ def plot_alpha_beta():
             times_avg['size'].append(time)
             times_avg['color'].append((time - min_time) / (max_time - min_time))
     times_std = {'a': [],
-                    'b': [],
-                    'size': [],
-                    'color': []}
+                 'b': [],
+                 'size': [],
+                 'color': []}
     for alpha in alphas:
         for beta in betas:
             times_std['a'].append(alpha)
@@ -330,22 +340,25 @@ def plot_alpha_beta():
     for alpha in alphas:
         for beta in betas:
             all_avg_rounds.append(
-                np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)] if item['rounds'] is not None]))
-    all_avg_rounds.append(np.mean([item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None]))
+                np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)] if
+                         item['rounds'] is not None]))
+    all_avg_rounds.append(
+        np.mean([item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None]))
     min_rounds = min(all_avg_rounds)
     max_rounds = max(all_avg_rounds)
     import matplotlib
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["green", "red"], N=1000)
 
     rounds_avg = {'a': [],
-                 'b': [],
-                 'size': [],
-                 'color': []}
+                  'b': [],
+                  'size': [],
+                  'color': []}
     for alpha in alphas:
         for beta in betas:
             rounds_avg['a'].append(alpha)
             rounds_avg['b'].append(beta)
-            rounds = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)] if item['rounds'] is not None])
+            rounds = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(alpha, beta)] if
+                              item['rounds'] is not None])
             rounds_avg['size'].append(rounds)
             rounds_avg['color'].append((rounds - min_rounds) / (max_rounds - min_rounds))
 
@@ -381,24 +394,30 @@ def plot_alpha_beta():
                   'std': [],
                   'color': []}
 
-    random_rounds_avg = np.mean([item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None])
-    random_rounds_std = np.std([item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None])
+    random_rounds_avg = np.mean(
+        [item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None])
+    random_rounds_std = np.std(
+        [item['rounds'] * 50 for item in perf_dictionary['random'] if item['rounds'] is not None])
     comparison['x'].append(0)
     comparison['y'].append(0)
     comparison['avg'].append(random_rounds_avg)
     comparison['std'].append(random_rounds_std)
     comparison['color'].append((random_rounds_avg - min_rounds) / (max_rounds - min_rounds))
 
-    worst_rounds_avg = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)] if item['rounds'] is not None])
-    worst_rounds_std = np.std([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)] if item['rounds'] is not None])
+    worst_rounds_avg = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)] if
+                                item['rounds'] is not None])
+    worst_rounds_std = np.std([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0., 100)] if
+                               item['rounds'] is not None])
     comparison['x'].append(0.5)
     comparison['y'].append(0)
     comparison['avg'].append(worst_rounds_avg)
     comparison['std'].append(worst_rounds_std)
     comparison['color'].append((worst_rounds_avg - min_rounds) / (max_rounds - min_rounds))
 
-    best_rounds_avg = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)] if item['rounds'] is not None])
-    best_rounds_std = np.std([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)] if item['rounds'] is not None])
+    best_rounds_avg = np.mean([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)] if
+                               item['rounds'] is not None])
+    best_rounds_std = np.std([item['rounds'] * 50 for item in perf_dictionary['a{:.1f}_b{:.1f}'.format(0.6, 40)] if
+                              item['rounds'] is not None])
     comparison['x'].append(1)
     comparison['y'].append(0)
     comparison['avg'].append(best_rounds_avg)
@@ -427,218 +446,430 @@ def plot_alpha_beta():
     plt.show()
 
 
-def plot_alpha():
-    root_dir = os.path.join(BASE_DIR, 'alphas_all_rounds_target_10_runs_each', 'metrics')
+def plot_k():
+    root_dir = os.path.join(BASE_DIR, 'ks_all_rounds_target_10_runs_each', 'metrics')
     sub_dirs = [x[0] for x in os.walk(root_dir)][1:]
     sim_ids = [dire.split('/')[-1] for dire in sub_dirs]
     print(sim_ids)
     policies = []
-    alphas = []
+    ks = []
     for sim_id in sim_ids:
-        args_file = os.path.join(BASE_DIR, 'alphas_all_rounds_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        args_file = os.path.join(BASE_DIR, 'ks_all_rounds_target_10_runs_each', 'metrics', sim_id, 'args.txt')
         with open(args_file) as f:
             sim_arguments = f.read()
             sim_arguments = json.loads(sim_arguments)
             print(sim_arguments)
             policies.append(sim_arguments['policy'])
-            alphas.append(sim_arguments['alpha'])
+            if sim_arguments['policy'] == 'energy_aware':
+                ks.append(sim_arguments['k'])
     policies = list(set(policies))
-    alphas = sorted(list(set(alphas)))
+    ks = sorted(list(set(ks)))
     print(policies)
-    print(alphas)
-    perf_dictionary = {alpha: [] for alpha in alphas}
+    print(ks)
+    perf_dictionary = {'k{:.1f}'.format(k): [] for k in ks}
     if 'random' in policies:
         perf_dictionary['random'] = []
     for sim_id in sim_ids:
-        args_file = os.path.join(BASE_DIR, 'alphas_all_rounds_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        args_file = os.path.join(BASE_DIR, 'ks_all_rounds_target_10_runs_each', 'metrics', sim_id, 'args.txt')
         with open(args_file) as f:
             sim_arguments = f.read()
             sim_arguments = json.loads(sim_arguments)
         policy = sim_arguments['policy']
-        alpha = sim_arguments['alpha']
-        perf_file = os.path.join(BASE_DIR, 'alphas_all_rounds_target_10_runs_each',
+        k = sim_arguments['k'] if policy == 'energy_aware' else None
+        perf_file = os.path.join(BASE_DIR, 'ks_all_rounds_target_10_runs_each',
                                  'metrics', sim_id, 'final_metrics.csv')
         print(sim_id)
         perfs = pd.read_csv(perf_file)
         if policy == 'random':
-            perf_dictionary['random'].append({'acc': list(perfs['accuracy'])[-1],
-                                              'energy': list(perfs['tot_energy'])[-1],
-                                              'time': list(perfs['tot_time'])[-1], })
+            try:
+                accs_list = list(perfs['accuracy'])
+                first_acc_reached = list(filter(lambda i: i > 0.97, accs_list))[0]
+                rounds = accs_list.index(first_acc_reached)
+            except IndexError:
+                rounds = None
+                continue
+            # perf_dictionary['random'].append({'acc': list(perfs['accuracy'])[-1],
+            #                                   'energy': list(perfs['tot_energy'])[-1],
+            #                                   'time': list(perfs['tot_time'])[-1],
+            #                                   'rounds': rounds})
+            perf_dictionary['random'].append({'acc': list(perfs['accuracy'])[rounds],
+                                              'energy': list(perfs['tot_energy'])[rounds],
+                                              'time': list(perfs['tot_time'])[rounds],
+                                              'rounds': rounds})
         else:
-            perf_dictionary[alpha].append({'acc': list(perfs['accuracy'])[-1],
-                                           'energy': list(perfs['tot_energy'])[-1],
-                                           'time': list(perfs['tot_time'])[-1], })
+            try:
+                accs_list = list(perfs['accuracy'])
+                first_acc_reached = list(filter(lambda i: i > 0.97, accs_list))[0]
+                rounds = accs_list.index(first_acc_reached)
+            except IndexError:
+                rounds = None
+                continue
+            # perf_dictionary['k{:.1f}'.format(k)].append({'acc': list(perfs['accuracy'])[-1],
+            #                                              'energy': list(perfs['tot_energy'])[-1],
+            #                                              'time': list(perfs['tot_time'])[-1],
+            #                                              'rounds': rounds})
+            perf_dictionary['k{:.1f}'.format(k)].append({'acc': list(perfs['accuracy'])[rounds],
+                                                         'energy': list(perfs['tot_energy'])[rounds],
+                                                         'time': list(perfs['tot_time'])[rounds],
+                                                         'rounds': rounds})
     print()
-    xs = alphas
-    energies_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary[alpha]]) for alpha in alphas]
-    energies_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary[alpha]]) for alpha in alphas]
-    print()
-    times_avg = [np.mean([item['time'] for item in perf_dictionary[alpha]]) for alpha in alphas]
-    times_std = [np.std([item['time'] for item in perf_dictionary[alpha]]) for alpha in alphas]
-    print()
+    os.makedirs('plots/ks', exist_ok=True)
 
-    plt.plot(xs, energies_avg, 'g-', label="Smart selection")
+    xs = ks
+    list_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary['k{:.1f}'.format(k)]]) for k in ks]
+    list_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary['k{:.1f}'.format(k)]]) for k in ks]
+    plt.plot(xs, list_avg, c='#1b9e77', marker='^', label="EneA-FL")
     plt.fill_between(xs,
-                     [energies_avg[i] - energies_std[i] for i in range(len(energies_avg))],
-                     [energies_avg[i] + energies_std[i] for i in range(len(energies_avg))],
-                     alpha=0.5, edgecolor='g', facecolor='g')
-    random_energies_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary['random']]) for _ in alphas]
-    random_energies_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary['random']]) for _ in alphas]
-    plt.plot(xs, random_energies_avg, 'b-', label="Random selection")
+                     [list_avg[i] - list_std[i] for i in range(len(list_avg))],
+                     [list_avg[i] + list_std[i] for i in range(len(list_avg))],
+                     alpha=0.5, edgecolor='#1b9e77', facecolor='#1b9e77')
+    random_list_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary['random']]) for _ in ks]
+    random_list_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary['random']]) for _ in ks]
+    plt.plot(xs, random_list_avg, c='#d95f02', marker='s', label="Random")
     plt.fill_between(xs,
-                     [random_energies_avg[i] - random_energies_std[i] for i in range(len(random_energies_avg))],
-                     [random_energies_avg[i] + random_energies_std[i] for i in range(len(random_energies_avg))],
-                     alpha=0.5, edgecolor='b', facecolor='b')
-    plt.xlabel("alpha")
-    plt.ylabel("Energy [KJ]")
-    plt.ylim(0, 6000)
-    plt.legend()
+                     [random_list_avg[i] - random_list_std[i] for i in range(len(random_list_avg))],
+                     [random_list_avg[i] + random_list_std[i] for i in range(len(random_list_avg))],
+                     alpha=0.5, edgecolor='#d95f02', facecolor='#d95f02')
+    plt.xlabel(r"$k$", size=14)
+    plt.ylabel("Energy [KJ]", size=14)
+    # plt.ylim(0, 6000)
+    plt.ylim(0, 2500)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower left', prop={'size': 14})
+    plt.title(r'Energy consumption vs $k$', size=16)
+    plt.savefig('plots/ks/energy_random_vs_ours.pdf')
     plt.show()
 
-    plt.plot(xs, times_avg, 'g-', label="Smart selection")
+    list_avg = [np.mean([item['time'] / 3600 for item in perf_dictionary['k{:.1f}'.format(k)]]) for k in ks]
+    list_std = [np.std([item['time'] / 3600 for item in perf_dictionary['k{:.1f}'.format(k)]]) for k in ks]
+    plt.plot(xs, list_avg, c='#1b9e77', marker='^', label="EneA-FL")
     plt.fill_between(xs,
-                     [times_avg[i] - times_std[i] for i in range(len(times_avg))],
-                     [times_avg[i] + times_std[i] for i in range(len(times_avg))],
-                     alpha=0.5, edgecolor='g', facecolor='g')
-    random_times_avg = [np.mean([item['time'] for item in perf_dictionary['random']]) for _ in alphas]
-    random_times_std = [np.std([item['time'] for item in perf_dictionary['random']]) for _ in alphas]
-    plt.plot(xs, random_times_avg, 'b-', label="Random selection")
+                     [list_avg[i] - list_std[i] for i in range(len(list_avg))],
+                     [list_avg[i] + list_std[i] for i in range(len(list_avg))],
+                     alpha=0.5, edgecolor='#1b9e77', facecolor='#1b9e77')
+    random_list_avg = [np.mean([item['time'] / 3600 for item in perf_dictionary['random']]) for _ in ks]
+    random_list_std = [np.std([item['time'] / 3600 for item in perf_dictionary['random']]) for _ in ks]
+    plt.plot(xs, random_list_avg, c='#d95f02', marker='s', label="Random")
     plt.fill_between(xs,
-                     [random_times_avg[i] - random_times_std[i] for i in range(len(random_times_avg))],
-                     [random_times_avg[i] + random_times_std[i] for i in range(len(random_times_avg))],
-                     alpha=0.5, edgecolor='b', facecolor='b')
-    plt.xlabel(r"$\alpha$")
-    plt.ylabel("Time [s]")
-    plt.ylim(0, 150000)
-    plt.legend()
+                     [random_list_avg[i] - random_list_std[i] for i in range(len(random_list_avg))],
+                     [random_list_avg[i] + random_list_std[i] for i in range(len(random_list_avg))],
+                     alpha=0.5, edgecolor='#d95f02', facecolor='#d95f02')
+    plt.xlabel(r"$k$", size=14)
+    plt.ylabel("Time [hours]", size=14)
+    # plt.ylim(5, 35)
+    plt.ylim(4, 16)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower left', prop={'size': 14})
+    plt.title(r'Time vs $k$', size=16)
+    plt.savefig('plots/ks/time_random_vs_ours.pdf')
     plt.show()
 
-    acc_avg = [np.mean([item['acc'] for item in perf_dictionary[alpha] if item['acc'] > 0.96]) for alpha in alphas]
-    acc_std = [np.std([item['acc'] for item in perf_dictionary[alpha] if item['acc'] > 0.96]) for alpha in alphas]
-    plt.plot(xs, acc_avg, 'g-', label="Smart selection")
+    list_avg = [np.mean([item['rounds'] for item in perf_dictionary['k{:.1f}'.format(k)] if item['rounds'] is not None])
+                for k in ks]
+    list_std = [np.std([item['rounds'] for item in perf_dictionary['k{:.1f}'.format(k)] if item['rounds'] is not None])
+                for k in ks]
+    plt.plot(xs, list_avg, c='#1b9e77', marker='^', label="EneA-FL")
     plt.fill_between(xs,
-                     [acc_avg[i] - acc_std[i] for i in range(len(acc_avg))],
-                     [acc_avg[i] + acc_std[i] for i in range(len(acc_avg))],
-                     alpha=0.5, edgecolor='g', facecolor='g')
-    random_acc_avg = [np.mean([item['acc'] for item in perf_dictionary['random'] if item['acc'] > 0.96]) for _ in
-                      alphas]
-    random_acc_std = [np.std([item['acc'] for item in perf_dictionary['random'] if item['acc'] > 0.96]) for _ in alphas]
-    plt.plot(xs, random_acc_avg, 'b-', label="Random selection")
+                     [list_avg[i] - list_std[i] for i in range(len(list_avg))],
+                     [list_avg[i] + list_std[i] for i in range(len(list_avg))],
+                     alpha=0.5, edgecolor='#1b9e77', facecolor='#1b9e77')
+    random_list_avg = [np.mean([item['rounds'] for item in perf_dictionary['random'] if item['rounds'] is not None]) for
+                       _ in ks]
+    random_list_std = [np.std([item['rounds'] for item in perf_dictionary['random'] if item['rounds'] is not None]) for
+                       _ in ks]
+    plt.plot(xs, random_list_avg, c='#d95f02', marker='s', label="Random")
     plt.fill_between(xs,
-                     [random_acc_avg[i] - random_acc_std[i] for i in range(len(random_acc_avg))],
-                     [random_acc_avg[i] + random_acc_std[i] for i in range(len(random_acc_avg))],
-                     alpha=0.5, edgecolor='b', facecolor='b')
-    plt.xlabel(r"$\alpha$")
-    plt.ylabel("Accuracy")
-    # plt.ylim(0, 1)
-    plt.legend()
+                     [random_list_avg[i] - random_list_std[i] for i in range(len(random_list_avg))],
+                     [random_list_avg[i] + random_list_std[i] for i in range(len(random_list_avg))],
+                     alpha=0.5, edgecolor='#d95f02', facecolor='#d95f02')
+    plt.xlabel(r"$k$", size=14)
+    plt.ylabel("Rounds", size=14)
+    plt.ylim(6, 17)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower left', prop={'size': 14})
+    plt.title(r'Rounds to converge vs $k$', size=16)
+    plt.savefig('plots/ks/rounds_random_vs_ours.pdf')
     plt.show()
 
-    fig, host = plt.subplots()
-    par1 = host.twinx()
-    p1, = host.plot(xs, energies_avg, 'r-', label="Energy")
-    p2, = par1.plot(xs, times_avg, 'g-', label="Time")
-    host.fill_between(xs,
-                      [energies_avg[i] - energies_std[i] for i in range(len(energies_avg))],
-                      [energies_avg[i] + energies_std[i] for i in range(len(energies_avg))],
-                      alpha=0.5, edgecolor='r', facecolor='r')
-    host.fill_between(xs,
-                      [times_avg[i] - times_std[i] for i in range(len(times_avg))],
-                      [times_avg[i] + times_std[i] for i in range(len(times_avg))],
-                      alpha=0.5, edgecolor='g', facecolor='g')
-    host.set_ylim(0, 2500)
-    par1.set_ylim(0, 55000)
-    host.set_xlabel("alpha")
-    host.set_ylabel("Energy [KJ]")
-    par1.set_ylabel("Time [s]")
-    lines = [p1, p2]
-    host.legend(lines, [l.get_label() for l in lines])
-    for ax in [par1]:
-        ax.set_frame_on(True)
-        ax.patch.set_visible(False)
-        plt.setp(ax.spines.values(), visible=False)
-        ax.spines["right"].set_visible(True)
-    host.yaxis.label.set_color(p1.get_color())
-    par1.yaxis.label.set_color(p2.get_color())
-    par1.spines["right"].set_edgecolor(p2.get_color())
-    host.tick_params(axis='y', colors=p1.get_color())
-    par1.tick_params(axis='y', colors=p2.get_color())
-    fig.show()
 
-
-def plot_alpha_beta_best():
-    alphas = [i for i in np.arange(0, 1.05, 0.2)]
-    betas = [1 - i for i in alphas]
-    perf_dictionary = {alpha: None for alpha in alphas}
-    for alpha in alphas:
-        perf_file = os.path.join(BASE_DIR, 'alphas_gpus_only_acc_target_best', 'metrics',
-                                 'a_{:.1f}'.format(alpha), 'final_metrics.csv')
+def plot_clients():
+    root_dir = os.path.join(BASE_DIR, 'clients_all_acc_target_10_runs_each', 'metrics')
+    sub_dirs = [x[0] for x in os.walk(root_dir)][1:]
+    sim_ids = [dire.split('/')[-1] for dire in sub_dirs]
+    print(sim_ids)
+    policies = []
+    clients = []
+    for sim_id in sim_ids:
+        args_file = os.path.join(BASE_DIR, 'clients_all_acc_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        with open(args_file) as f:
+            sim_arguments = f.read()
+            sim_arguments = json.loads(sim_arguments)
+            print(sim_arguments)
+            policies.append(sim_arguments['policy'])
+            if sim_arguments['policy'] == 'energy_aware':
+                clients.append(sim_arguments['clients_per_round'])
+    policies = list(set(policies))
+    clients = sorted(list(set(clients)))
+    print(policies)
+    print(clients)
+    perf_dictionary = {'random': {'c{}'.format(client): [] for client in clients},
+                       'eneafl': {'c{}'.format(client): [] for client in clients}}
+    for sim_id in sim_ids:
+        args_file = os.path.join(BASE_DIR, 'clients_all_acc_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        with open(args_file) as f:
+            sim_arguments = f.read()
+            sim_arguments = json.loads(sim_arguments)
+        policy = sim_arguments['policy']
+        client = sim_arguments['clients_per_round']
+        perf_file = os.path.join(BASE_DIR, 'clients_all_acc_target_10_runs_each',
+                                 'metrics', sim_id, 'final_metrics.csv')
+        print(sim_id)
         perfs = pd.read_csv(perf_file)
-        perf_dictionary[alpha] = {'acc': list(perfs['accuracy']),
-                                  'energy': list(perfs['tot_energy']),
-                                  'time': list(perfs['tot_time']), }
-    perf_file = os.path.join(BASE_DIR, 'alphas_gpus_only_acc_target_best', 'metrics', 'random', 'final_metrics.csv')
-    perfs = pd.read_csv(perf_file)
-    perf_dictionary['random'] = {'acc': list(perfs['accuracy']),
-                                 'energy': list(perfs['tot_energy']),
-                                 'time': list(perfs['tot_time']), }
-    # Plot
-    xs = alphas
-    ys = betas
-    energies = [perf_dictionary[alpha]['energy'][-1] / 1000000 for alpha in alphas]
-    plt.scatter(xs, ys,
-                s=energies,
-                alpha=0.5, )
-    plt.xlabel("alpha", size=16)
-    plt.ylabel("beta", size=16)
-    plt.title("Energy spent", size=18)
+        if policy == 'random':
+            accs_list = list(perfs['accuracy'])
+            if len(accs_list) > 20:
+                continue
+            else:
+                perf_dictionary['random']['c{}'.format(client)].append({'acc': list(perfs['accuracy'])[-1],
+                                                                        'energy': list(perfs['tot_energy'])[-1],
+                                                                        'time': list(perfs['tot_time'])[-1],
+                                                                        'rounds': len(list(perfs['accuracy']))})
+        else:
+            accs_list = list(perfs['accuracy'])
+            if len(accs_list) > 20:
+                continue
+            else:
+                perf_dictionary['eneafl']['c{}'.format(client)].append({'acc': list(perfs['accuracy'])[-1],
+                                                                        'energy': list(perfs['tot_energy'])[-1],
+                                                                        'time': list(perfs['tot_time'])[-1],
+                                                                        'rounds': len(list(perfs['accuracy']))})
+    print()
+    os.makedirs('plots/clients', exist_ok=True)
+
+    xs = clients
+    list_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary['eneafl']['c{}'.format(client)]])
+                for client in clients]
+    list_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary['eneafl']['c{}'.format(client)]])
+                for client in clients]
+    plt.plot(xs, list_avg, c='#1b9e77', marker='^', label="EneA-FL")
+    plt.fill_between(xs,
+                     [list_avg[i] - list_std[i] for i in range(len(list_avg))],
+                     [list_avg[i] + list_std[i] for i in range(len(list_avg))],
+                     alpha=0.5, edgecolor='#1b9e77', facecolor='#1b9e77')
+    random_list_avg = [np.mean([item['energy'] / 1000000 for item in perf_dictionary['random']['c{}'.format(client)]])
+                       for client in clients]
+    random_list_std = [np.std([item['energy'] / 1000000 for item in perf_dictionary['random']['c{}'.format(client)]])
+                       for client in clients]
+    plt.plot(xs, random_list_avg, c='#d95f02', marker='s', label="Random")
+    plt.fill_between(xs,
+                     [random_list_avg[i] - random_list_std[i] for i in range(len(random_list_avg))],
+                     [random_list_avg[i] + random_list_std[i] for i in range(len(random_list_avg))],
+                     alpha=0.5, edgecolor='#d95f02', facecolor='#d95f02')
+    plt.xlabel("Number of clients", size=14)
+    plt.ylabel("Energy [KJ]", size=14)
+    plt.ylim(0, 8500)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='upper left', prop={'size': 14})
+    plt.title(r'Energy consumption vs number of clients per round', size=16)
+    plt.savefig('plots/clients/energy_random_vs_ours.pdf')
     plt.show()
 
-    plt.plot(xs, energies)
-    plt.xlabel("alpha", size=16)
-    plt.ylabel("Energy [KJ]", size=16)
-    plt.title("Energy spent", size=18)
+    list_avg = [np.mean([item['time'] / 3600 for item in perf_dictionary['eneafl']['c{}'.format(client)]])
+                for client in clients]
+    list_std = [np.std([item['time'] / 3600 for item in perf_dictionary['eneafl']['c{}'.format(client)]])
+                for client in clients]
+    plt.plot(xs, list_avg, c='#1b9e77', marker='^', label="EneA-FL")
+    plt.fill_between(xs,
+                     [list_avg[i] - list_std[i] for i in range(len(list_avg))],
+                     [list_avg[i] + list_std[i] for i in range(len(list_avg))],
+                     alpha=0.5, edgecolor='#1b9e77', facecolor='#1b9e77')
+    random_list_avg = [np.mean([item['time'] / 3600 for item in perf_dictionary['random']['c{}'.format(client)]])
+                       for client in clients]
+    random_list_std = [np.std([item['time'] / 3600 for item in perf_dictionary['random']['c{}'.format(client)]])
+                       for client in clients]
+    plt.plot(xs, random_list_avg, c='#d95f02', marker='s', label="Random")
+    plt.fill_between(xs,
+                     [random_list_avg[i] - random_list_std[i] for i in range(len(random_list_avg))],
+                     [random_list_avg[i] + random_list_std[i] for i in range(len(random_list_avg))],
+                     alpha=0.5, edgecolor='#d95f02', facecolor='#d95f02')
+    plt.xlabel("Number of clients", size=14)
+    plt.ylabel("Time [hours]", size=14)
+    # plt.ylim(5, 35)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower right', prop={'size': 14})
+    plt.title(r'Time vs number of clients per round', size=16)
+    plt.savefig('plots/clients/time_random_vs_ours.pdf')
     plt.show()
 
-    times = [perf_dictionary[alpha]['time'][-1] for alpha in alphas]
-    fig, host = plt.subplots()
-    par1 = host.twinx()
-    p1, = host.plot(xs, energies, 'r-', label="Energy")
-    p2, = par1.plot(xs, times, 'g-', label="Time")
-    host.set_ylim(0, 400)
-    par1.set_ylim(0, 12000)
-    host.set_xlabel("alpha")
-    host.set_ylabel("Energy [KJ]")
-    par1.set_ylabel("Time [s]")
-    lines = [p1, p2]
-    host.legend(lines, [l.get_label() for l in lines])
-    for ax in [par1]:
-        ax.set_frame_on(True)
-        ax.patch.set_visible(False)
-        plt.setp(ax.spines.values(), visible=False)
-        ax.spines["right"].set_visible(True)
-    host.yaxis.label.set_color(p1.get_color())
-    par1.yaxis.label.set_color(p2.get_color())
-    par1.spines["right"].set_edgecolor(p2.get_color())
-    host.tick_params(axis='y', colors=p1.get_color())
-    par1.tick_params(axis='y', colors=p2.get_color())
-    fig.show()
 
-    xs = [i for i in range(1, 16)]
-    ys = perf_dictionary['random']['acc']
-    plt.plot(ys, label='random')
-    for alpha in alphas:
-        ys = perf_dictionary[alpha]['acc']
-        plt.plot(ys, label='a={:.1f}, b={:.1f}'.format(alpha, 1 - alpha))
-    plt.legend()
+def plot_energy_budget():
+    root_dir = os.path.join(BASE_DIR, 'ene_budget_all_acc_target_10_runs_each', 'metrics')
+    sub_dirs = [x[0] for x in os.walk(root_dir)][1:]
+    sim_ids = [dire.split('/')[-1] for dire in sub_dirs]
+    print(sim_ids)
+    policies = ['random', 'energy_aware']
+    perf_dictionary = {pol: {'acc': [],
+                             'energy': [],
+                             'time': [],
+                             'acc_list': []} for pol in policies}
+    for sim_id in sim_ids:
+        args_file = os.path.join(BASE_DIR, 'ene_budget_all_acc_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        with open(args_file) as f:
+            sim_arguments = f.read()
+            sim_arguments = json.loads(sim_arguments)
+        policy = sim_arguments['policy']
+        perf_file = os.path.join(BASE_DIR, 'ene_budget_all_acc_target_10_runs_each',
+                                 'metrics', sim_id, 'final_metrics.csv')
+        print(sim_id)
+        perfs = pd.read_csv(perf_file)
+        accs_list = list(perfs['accuracy'])
+        if accs_list[-2] < 0.9:
+            continue
+        perf_dictionary[policy]['acc'].append(list(perfs['accuracy'])[-1])
+        perf_dictionary[policy]['energy'].append(list(perfs['tot_energy'])[-1])
+        perf_dictionary[policy]['time'].append(list(perfs['tot_time'])[-1])
+        perf_dictionary[policy]['acc_list'].append(accs_list)
+    print()
+    os.makedirs('plots/energy_budget', exist_ok=True)
+
+    index_best_random = perf_dictionary['random']['acc'].index(max(perf_dictionary['random']['acc']))
+    index_worst_random = perf_dictionary['random']['acc'].index(min(perf_dictionary['random']['acc']))
+    index_best_enea = perf_dictionary['energy_aware']['acc'].index(max(perf_dictionary['energy_aware']['acc']))
+    index_worst_enea = perf_dictionary['energy_aware']['acc'].index(min(perf_dictionary['energy_aware']['acc']))
+
+    random_best = perf_dictionary['random']['acc_list'][index_best_random]
+    random_worst = perf_dictionary['random']['acc_list'][index_worst_random]
+    enea_best = perf_dictionary['energy_aware']['acc_list'][index_best_enea]
+    enea_worst = perf_dictionary['energy_aware']['acc_list'][index_worst_enea]
+
+    fig, ax = plt.subplots()
+    ax.plot(random_best, c='#66c2a5', marker='s', label="Random best")
+    ax.plot(random_worst, c='#fc8d62', marker='o', label="Random worst")
+    ax.plot(enea_best, c='#8da0cb', marker='^', label="EneA-FL best")
+    ax.plot(enea_worst, c='#e78ac3', marker='v', label="EneA-FL worst")
+    # inset axes....
+    axins = ax.inset_axes([0.6, 0.5, 0.35, 0.3])
+    axins.plot(random_best, c='#66c2a5', marker='s', label="Random best")
+    axins.plot(random_worst, c='#fc8d62', marker='o', label="Random worst")
+    axins.plot(enea_best, c='#8da0cb', marker='^', label="EneA-FL best")
+    axins.plot(enea_worst, c='#e78ac3', marker='v', label="EneA-FL worst")
+    # subregion of the original image
+    x1, x2, y1, y2 = 1.5, 8.5, 0.875, 0.975
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+    axins.set_xticklabels([])
+    axins.set_yticklabels([])
+
+    ax.indicate_inset_zoom(axins, edgecolor="black")
+    plt.xlabel("Round", size=14)
+    plt.ylabel("Accuracy", size=14)
+    # plt.ylim(5, 35)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower right', prop={'size': 14})
+    plt.title(r'Enea-FL vs Random given energy budget of 1 MJ', size=16)
+    plt.savefig('plots/energy_budget/random_vs_ours.pdf')
     plt.show()
 
-    ys = [ene / 1000000 for ene in perf_dictionary['random']['energy']]
-    plt.plot(ys, label='random')
-    for alpha in alphas:
-        ys = [ene / 1000000 for ene in perf_dictionary[alpha]['energy']]
-        plt.plot(ys, label='a={:.1f}, b={:.1f}'.format(alpha, 1 - alpha))
-    plt.legend()
+    plt.boxplot([perf_dictionary['random']['acc'],
+                 perf_dictionary['energy_aware']['acc']],
+                positions=[1, 2],
+                labels=['Random', 'EneA-FL'])
+    # plt.xlabel("Round", size=14)
+    plt.ylabel("Accuracy", size=14)
+    # plt.ylim(0.92, 1)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.title(r'Enea-FL vs Random given energy budget of 1 MJ', size=16)
+    plt.savefig('plots/energy_budget/random_vs_ours_box.pdf')
+    plt.show()
+
+
+def plot_time_budget():
+    root_dir = os.path.join(BASE_DIR, 'time_budget_all_acc_target_10_runs_each', 'metrics')
+    sub_dirs = [x[0] for x in os.walk(root_dir)][1:]
+    sim_ids = [dire.split('/')[-1] for dire in sub_dirs]
+    print(sim_ids)
+    policies = ['random', 'energy_aware']
+    perf_dictionary = {pol: {'acc': [],
+                             'energy': [],
+                             'time': [],
+                             'acc_list': []} for pol in policies}
+    for sim_id in sim_ids:
+        args_file = os.path.join(BASE_DIR, 'time_budget_all_acc_target_10_runs_each', 'metrics', sim_id, 'args.txt')
+        with open(args_file) as f:
+            sim_arguments = f.read()
+            sim_arguments = json.loads(sim_arguments)
+        policy = sim_arguments['policy']
+        perf_file = os.path.join(BASE_DIR, 'time_budget_all_acc_target_10_runs_each',
+                                 'metrics', sim_id, 'final_metrics.csv')
+        print(sim_id)
+        perfs = pd.read_csv(perf_file)
+        accs_list = list(perfs['accuracy'])
+        if accs_list[-2] < 0.9:
+            continue
+        perf_dictionary[policy]['acc'].append(list(perfs['accuracy'])[-1])
+        perf_dictionary[policy]['energy'].append(list(perfs['tot_energy'])[-1])
+        perf_dictionary[policy]['time'].append(list(perfs['tot_time'])[-1])
+        perf_dictionary[policy]['acc_list'].append(accs_list)
+    print()
+    os.makedirs('plots/time_budget', exist_ok=True)
+
+    index_best_random = perf_dictionary['random']['acc'].index(max(perf_dictionary['random']['acc']))
+    index_worst_random = perf_dictionary['random']['acc'].index(min(perf_dictionary['random']['acc']))
+    index_best_enea = perf_dictionary['energy_aware']['acc'].index(max(perf_dictionary['energy_aware']['acc']))
+    index_worst_enea = perf_dictionary['energy_aware']['acc'].index(min(perf_dictionary['energy_aware']['acc']))
+
+    random_best = perf_dictionary['random']['acc_list'][index_best_random]
+    random_worst = perf_dictionary['random']['acc_list'][index_worst_random]
+    enea_best = perf_dictionary['energy_aware']['acc_list'][index_best_enea]
+    enea_worst = perf_dictionary['energy_aware']['acc_list'][index_worst_enea]
+
+    fig, ax = plt.subplots()
+    ax.plot(random_best, c='#66c2a5', marker='s', label="Random best")
+    ax.plot(random_worst, c='#fc8d62', marker='o', label="Random worst")
+    ax.plot(enea_best, c='#8da0cb', marker='^', label="EneA-FL best")
+    ax.plot(enea_worst, c='#e78ac3', marker='v', label="EneA-FL worst")
+    # inset axes....
+    axins = ax.inset_axes([0.6, 0.5, 0.35, 0.3])
+    axins.plot(random_best, c='#66c2a5', marker='s', label="Random best")
+    axins.plot(random_worst, c='#fc8d62', marker='o', label="Random worst")
+    axins.plot(enea_best, c='#8da0cb', marker='^', label="EneA-FL best")
+    axins.plot(enea_worst, c='#e78ac3', marker='v', label="EneA-FL worst")
+    # subregion of the original image
+    x1, x2, y1, y2 = 1.5, 8.5, 0.875, 0.975
+    axins.set_xlim(x1, x2)
+    axins.set_ylim(y1, y2)
+    axins.set_xticklabels([])
+    axins.set_yticklabels([])
+
+    ax.indicate_inset_zoom(axins, edgecolor="black")
+    plt.xlabel("Round", size=14)
+    plt.ylabel("Accuracy", size=14)
+    # plt.ylim(5, 35)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.legend(loc='lower right', prop={'size': 14})
+    plt.title(r'Enea-FL vs Random given time budget of 8 hours', size=16)
+    plt.savefig('plots/time_budget/random_vs_ours.pdf')
+    plt.show()
+
+    plt.boxplot([perf_dictionary['random']['acc'],
+                 perf_dictionary['energy_aware']['acc']],
+                positions=[1, 2],
+                labels=['Random', 'EneA-FL'])
+    # plt.xlabel("Round", size=14)
+    plt.ylabel("Accuracy", size=14)
+    # plt.ylim(0.92, 1)
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.title(r'Enea-FL vs Random given time budget of 8 hours', size=16)
+    plt.savefig('plots/time_budget/random_vs_ours_box.pdf')
     plt.show()
 
 
