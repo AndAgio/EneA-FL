@@ -34,7 +34,7 @@ def run_in_batch(commands, logfiles):
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
         for cuda_device in range(0, 2):
-            coms = [com + ' --cuda={}'.format(0 if 0 <= i < batch / 2 else 1)
+            coms = [com + ' --cuda={}'.format('cpu' if 'sent140' in com else 0 if 0 <= i < batch / 2 else 1)
                     for i, com in enumerate(coms)]
         run_all_in_parallel(coms, logs)
 
@@ -108,7 +108,7 @@ def run_nsim():
     os.makedirs(os.path.join('logs', 'modes'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-        modes = ['iid+sim', 'iid+nsim']
+        modes = ['iid+nsim']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
@@ -123,7 +123,7 @@ def run_nsim():
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        modes = ['iid+sim', 'iid+nsim']
+        modes = ['iid+nsim']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
@@ -178,10 +178,10 @@ def run_death():
     os.makedirs(os.path.join('logs', 'deaths'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-        deaths = ['', '--random_death']
+        deaths = ['--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='rounds' --target_value=30  --batch_size=10 {}".format(dataset,
+                    " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
                                                                                            deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
@@ -193,10 +193,10 @@ def run_death():
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        deaths = ['', '--random_death']
+        deaths = ['--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='rounds' --target_value=30  --batch_size=10 {}".format(dataset,
+                    " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
                                                                                            deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
