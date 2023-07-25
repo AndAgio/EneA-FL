@@ -196,12 +196,93 @@ def run_death():
         deaths = ['', '--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        deaths[i])
+                    " --target_type='rounds' --target_value=30  --batch_size=10 {}".format(dataset,
+                                                                                           deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/modes/ene-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
                     for i in range(len(deaths))
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_energy_budget():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'energy_budget'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/energy_budget/random-d={}-ene-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/energy_budget/ene-d={}-ene-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_time_budget():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'time_budget'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/time_budget/random-d={}-time-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/time_budget/ene-d={}-time-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_acc_target():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'acc_target'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/acc_target/random-d={}-acc-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/acc_target/ene-d={}-acc-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
         run_in_batch(commands, logfiles)
@@ -237,5 +318,11 @@ if __name__ == '__main__':
         run_clients()
     elif options.experiment.lower() in ['death']:
         run_death()
+    elif options.experiment.lower() in ['energy_budget']:
+        run_energy_budget()
+    elif options.experiment.lower() in ['time_budget']:
+        run_time_budget()
+    elif options.experiment.lower() in ['acc_target']:
+        run_acc_target()
     else:
         raise ValueError('Option "{}" is not a valid option!'.format(options.experiment))
