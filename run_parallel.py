@@ -185,7 +185,7 @@ def run_death():
                                                                                            deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
+        logfiles = ["logs/deaths/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
                     for i in range(len(deaths))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -200,7 +200,7 @@ def run_death():
                                                                                            deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/ene-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
+        logfiles = ["logs/deaths/ene-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
                     for i in range(len(deaths))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
