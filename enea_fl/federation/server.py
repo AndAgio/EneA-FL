@@ -139,8 +139,8 @@ class Server:
                 try:
                     energy_used = energies_used[identity][round_ind]
                     time_taken = times_taken[identity][round_ind]
-                    acc_diff = self.get_worker_by_id(identity).get_acc_diff_history()[round_ind]
                     if energy_used != 0 and time_taken != 0:
+                        acc_diff = self.get_worker_by_id(identity).get_acc_diff_history()[round_ind]
                         tot_metric += alpha * energy_used / max_energy + \
                                       (1 - alpha) * time_taken / max_time - \
                                       beta * acc_diff
