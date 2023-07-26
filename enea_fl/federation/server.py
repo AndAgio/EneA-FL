@@ -145,7 +145,7 @@ class Server:
                                       (1 - alpha) * time_taken / max_time - \
                                       beta * acc_diff
                     else:
-                        tot_metric += np.inf
+                        tot_metric += 5
                 except KeyError:
                     pass
             metric = tot_metric / self.get_worker_by_id(identity).get_tot_rounds_enrolled()

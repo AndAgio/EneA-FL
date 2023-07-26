@@ -176,20 +176,20 @@ def run_death():
     datasets = ["mnist"]  # , "sent140"]
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'deaths'), exist_ok=True)
-    for dataset in datasets:
-        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-        deaths = ['--random_death']
-        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
-                                                                                           deaths[i])
-                    for i in range(len(deaths))
-                    for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/deaths/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
-                    for i in range(len(deaths))
-                    for j in range(n_experiments_for_setup)]
-        print('Number of experiments: {}.'.format(len(commands)))
-        run_in_batch(commands, logfiles)
+    # for dataset in datasets:
+    #     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    #     deaths = ['--random_death']
+    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    #                 "--clients_per_round=20 --lr=0.1 --policy='random'"
+    #                 " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
+    #                                                                                        deaths[i])
+    #                 for i in range(len(deaths))
+    #                 for _ in range(n_experiments_for_setup)]
+    #     logfiles = ["logs/deaths/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
+    #                 for i in range(len(deaths))
+    #                 for j in range(n_experiments_for_setup)]
+    #     print('Number of experiments: {}.'.format(len(commands)))
+    #     run_in_batch(commands, logfiles)
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
