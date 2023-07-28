@@ -253,7 +253,7 @@ def run_death():
 
 
 def run_energy_budget():
-    datasets = ["mnist"]  # , "sent140"]
+    datasets = ["sent140"]  # , "mnist"]
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'energy_budget'), exist_ok=True)
     for dataset in datasets:
@@ -280,7 +280,7 @@ def run_energy_budget():
 
 
 def run_time_budget():
-    datasets = ["mnist"]  # , "sent140"]
+    datasets = ["sent140"]  # , "mnist"]
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'time_budget'), exist_ok=True)
     for dataset in datasets:
@@ -307,14 +307,14 @@ def run_time_budget():
 
 
 def run_acc_target():
-    datasets = ["mnist"]  # , "sent140"]
+    datasets = ["sent140"]  # , "mnist"]
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'acc_target'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset)
+                    " --target_type='acc' --target_value=0.75  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/acc_target/random-d={}-acc-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
@@ -325,7 +325,7 @@ def run_acc_target():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset)
+                    " --target_type='acc' --target_value=0.75  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/acc_target/ene-d={}-acc-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
