@@ -21,6 +21,7 @@ glove.*.txt
 metrics/
 *.ckpt
 logs/
+plots/
 
 
 # Byte-compiled / optimized / DLL files
