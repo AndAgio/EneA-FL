@@ -29,12 +29,12 @@ def run_in_batch(commands, logfiles):
     start_time = time.time()
     tot_batches = math.ceil(len(commands) / batch)
     for i in range(tot_batches):
-        print('Running batch {}/{}. Time taken: {:.3f} s'.format(i, tot_batches, time.time()-start_time),
+        print('Running batch {}/{}. Time taken: {:.3f} s'.format(i, tot_batches, time.time() - start_time),
               end='\r')
         coms = commands[int(batch * i):int(batch * (i + 1))]
         logs = logfiles[int(batch * i):int(batch * (i + 1))]
         for cuda_device in range(0, 2):
-            coms = [com + ' --cuda={}'.format(0 if 0 <= i < batch / 2 else 1)
+            coms = [com + ' --cuda={}'.format('cpu' if 'sent140' in com else 0 if 0 <= i < batch / 2 else 1)
                     for i, com in enumerate(coms)]
         run_all_in_parallel(coms, logs)
 
@@ -102,13 +102,58 @@ def run_k():
         run_in_batch(commands, logfiles)
 
 
+def run_dev_ps():
+    datasets = ["mnist"]  # , "sent140"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'probs'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        probs = [[0.1, 0.1, 0.1, 0.1, 0.1, 0.25, 0.25],
+                 [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7],
+                 [0.9/5, 0.9/5, 0.9/5, 0.9/5, 0.9/5, 0.05, 0.05], ]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10"
+                    " --raspberry_p={} --orin_gpu_p={} --orin_cpu_p={} "
+                    "--nano_cpu_p={} --xavier_cpu_p={} --xavier_gpu_p={} "
+                    "--nano_gpu_p={}".format(dataset, probs[i][0], probs[i][1], probs[i][2], probs[i][3],
+                                             probs[i][4], probs[i][5], probs[i][6])
+                    for i in range(len(probs))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/probs/random-d={}-p={}-({}).txt".format(dataset, probs[i], j)
+                    for i in range(len(probs))
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        probs = [[0.1, 0.1, 0.1, 0.1, 0.1, 0.25, 0.25],
+                 [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7],
+                 [0.9/5, 0.9/5, 0.9/5, 0.9/5, 0.9/5, 0.05, 0.05], ]
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10"
+                    " --raspberry_p={} --orin_gpu_p={} --orin_cpu_p={} "
+                    "--nano_cpu_p={} --xavier_cpu_p={} --xavier_gpu_p={} "
+                    "--nano_gpu_p={}".format(dataset, probs[i][0], probs[i][1], probs[i][2], probs[i][3],
+                                             probs[i][4], probs[i][5], probs[i][6])
+                    for i in range(len(probs))
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/probs/ene-d={}-p={}-({}).txt".format(dataset, probs[i], j)
+                    for i in range(len(probs))
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
 def run_nsim():
     datasets = ["mnist"]  # , "sent140"]
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'modes'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-        modes = ['iid+sim', 'iid+nsim']
+        modes = ['iid+nsim']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
@@ -123,9 +168,9 @@ def run_nsim():
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        modes = ['iid+sim', 'iid+nsim']
+        modes = ['iid+nsim']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode={} "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                     " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
                                                                                         modes[i])
                     for i in range(len(modes))
@@ -145,12 +190,12 @@ def run_clients():
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        clients[i])
+                    "--clients_per_round={} --lr=0.1 --policy='random'"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+                                                                                       clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -160,12 +205,12 @@ def run_clients():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        clients[i])
+                    "--clients_per_round={} --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+                                                                                       clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -178,14 +223,14 @@ def run_death():
     os.makedirs(os.path.join('logs', 'deaths'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-        deaths = ['', '--random_death']
+        deaths = ['--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='rounds' --target_value=30  --batch_size=10 {}".format(dataset,
+                    " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
                                                                                            deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
+        logfiles = ["logs/deaths/random-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
                     for i in range(len(deaths))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
@@ -193,15 +238,96 @@ def run_death():
 
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        deaths = ['', '--random_death']
+        deaths = ['--random_death']
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.9 --beta=0.1 --k=0.9"
-                    " --target_type='rounds' --target_value=30  --batch_size=10".format(dataset,
-                                                                                        deaths[i])
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.97  --batch_size=10 {}".format(dataset,
+                                                                                           deaths[i])
                     for i in range(len(deaths))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/modes/ene-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
+        logfiles = ["logs/deaths/ene-d={}-de={}-({}).txt".format(dataset, deaths[i], j)
                     for i in range(len(deaths))
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_energy_budget():
+    datasets = ["sent140"]  # , "mnist"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'energy_budget'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/energy_budget/random-d={}-ene-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/energy_budget/ene-d={}-ene-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_time_budget():
+    datasets = ["sent140"]  # , "mnist"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'time_budget'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/time_budget/random-d={}-time-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/time_budget/ene-d={}-time-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+
+def run_acc_target():
+    datasets = ["sent140"]  # , "mnist"]
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'acc_target'), exist_ok=True)
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='random'"
+                    " --target_type='acc' --target_value=0.75  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/acc_target/random-d={}-acc-({}).txt".format(dataset, j)
+                    for j in range(n_experiments_for_setup)]
+        print('Number of experiments: {}.'.format(len(commands)))
+        run_in_batch(commands, logfiles)
+
+    for dataset in datasets:
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
+        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                    "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    " --target_type='acc' --target_value=0.75  --batch_size=10".format(dataset)
+                    for _ in range(n_experiments_for_setup)]
+        logfiles = ["logs/acc_target/ene-d={}-acc-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
         run_in_batch(commands, logfiles)
@@ -237,5 +363,13 @@ if __name__ == '__main__':
         run_clients()
     elif options.experiment.lower() in ['death']:
         run_death()
+    elif options.experiment.lower() in ['dev_p']:
+        run_dev_ps()
+    elif options.experiment.lower() in ['energy_budget']:
+        run_energy_budget()
+    elif options.experiment.lower() in ['time_budget']:
+        run_time_budget()
+    elif options.experiment.lower() in ['acc_target']:
+        run_acc_target()
     else:
         raise ValueError('Option "{}" is not a valid option!'.format(options.experiment))

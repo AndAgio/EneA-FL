@@ -54,6 +54,9 @@ class Worker:
     def train(self, batch_size=10, lr=0.1, round_ind=-1):
         if self.is_dead():
             self.logger.print_it(' DEVICE IS DEAD! IT WILL NOT TRAIN THE MODEL! '.center(60, '-'))
+            self.used_energies[round_ind] = 0
+            self.times_taken[round_ind] = 0
+            self.tot_rounds_enrolled += 1
             return False, 0, 0, 0, 0
         else:
             self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
