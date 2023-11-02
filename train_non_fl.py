@@ -24,8 +24,8 @@ class Trainer:
         self.dataset = dataset
         self.batch_size = batch_size
         self.is_iot = is_iot
-        self.logger.print_it('Cleaning previous logger!')
-        self.clean_previous_logger()
+        # self.logger.print_it('Cleaning previous logger!')
+        # self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
         if dataset == 'femnist':
             self.model = FemnistModel()
@@ -219,11 +219,13 @@ class Trainer:
         self.logger.print_it('Reading word indexization from GloVe\'s json...')
         try:
             # _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
-            _, indd, _ = get_word_emb_arr(self.model.embs)
+            # _, _, indd, _ = get_word_emb_arr(self.model.embs)
+            _, _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
         except Exception as e:
             print(e)
             # _ = subprocess.call("./enea_fl/models/get_embs.sh", shell=True)
-            _, indd, _ = get_word_emb_arr(self.model.embs)
+            # _, _, indd, _ = get_word_emb_arr(self.model.embs)
+            _, _, indd, _ = get_word_emb_arr('enea_fl/models/embs.json')
         return indd
 
     def print_message(self, index_batch, batch_size, metrics, mode='train'):
@@ -277,7 +279,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
     parser.add_argument('--epochs', help='number of epochs;', type=int, default=100)
-    parser.add_argument('--iot', help='number of epochs;', type=bool, default=True)
+    parser.add_argument('--iot', help='number of epochs;', type=bool, default=False)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()

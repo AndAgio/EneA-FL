@@ -293,7 +293,7 @@ def run_energy_budget():
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/energy_budget/random-d={}-ene-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
@@ -304,7 +304,7 @@ def run_energy_budget():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                    " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/energy_budget/ene-d={}-ene-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
@@ -320,7 +320,7 @@ def run_time_budget():
         print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='random'"
-                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/time_budget/random-d={}-time-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
@@ -331,7 +331,7 @@ def run_time_budget():
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
                     "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                    " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
                     for _ in range(n_experiments_for_setup)]
         logfiles = ["logs/time_budget/ene-d={}-time-({}).txt".format(dataset, j)
                     for j in range(n_experiments_for_setup)]
