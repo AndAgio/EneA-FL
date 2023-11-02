@@ -20,7 +20,7 @@ class Server:
     def add_new_worker(self, worker):
         self.possible_workers.append(worker)
 
-    def select_workers(self, num_workers=20, policy='random', alpha=0.5, beta=0.5, k=0.9, round_ind=-1):
+    def select_workers(self, num_workers=20, policy='random', alpha=0.5, beta=0.5, k=0.9, round_ind=-1, max_update_latency=None):
         num_workers = min(num_workers, len(self.possible_workers))
         if policy == 'random':
             self.logger.print_it('Selecting workers based on random policy!')
@@ -33,63 +33,16 @@ class Server:
             # self.select_workers_based_on_energy(num_workers=num_workers, alpha=alpha, beta=beta, k=k)
             self.select_workers_based_on_energy_history(num_workers=num_workers, alpha=alpha, beta=beta, k=k,
                                                         round_ind=round_ind)
+        elif policy == 'oort':
+            self.logger.print_it('Selecting workers based on oort policy!')
+            self.select_workers_oort(num_workers=num_workers, k=k, max_update_latency=max_update_latency)
+        elif policy == 'oort_v2':
+            self.logger.print_it('Selecting workers based on oort_v2 policy!')
+            self.select_workers_oort_v2(num_workers=num_workers, k=k, max_update_latency=max_update_latency)
         else:
             raise ValueError('Policy "{}" not available!'.format(policy))
 
         return [(w.num_train_samples, w.num_test_samples) for w in self.selected_workers]
-
-    # def select_workers_based_on_energy(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9):
-    #     assert alpha + beta == 1 and alpha >= 0 and beta >= 0
-    #     last_workers = [w_id for (w_id, _, _) in self.last_updates]
-    #     if len(last_workers) == 1:
-    #         energy_workers = last_workers
-    #         n_random_workers = num_workers - len(energy_workers)
-    #         possible_other_workers = [worker for worker in self.possible_workers if worker not in energy_workers]
-    #         other_workers = np.random.choice(possible_other_workers, n_random_workers, replace=False).tolist()
-    #         self.selected_workers = energy_workers + other_workers
-    #     else:
-    #         n_energy_workers = math.floor(len(last_workers) * k)
-    #         n_random_workers = num_workers - n_energy_workers
-    #         metrics = {w_id: None for w_id in last_workers}
-    #         acc_with_all = self.compute_accuracy_with_all_updates()
-    #         for w_id in last_workers:
-    #             metrics[w_id] = self.compute_energy_eff_metric(identity=w_id,
-    #                                                            accuracy_with_all=acc_with_all,
-    #                                                            alpha=alpha,
-    #                                                            beta=beta)
-    #         metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
-    #         self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
-    #                                                                  n_best_workers=n_energy_workers,
-    #                                                                  n_random_workers=n_random_workers)
-
-    # def compute_energy_eff_metric(self, identity, accuracy_with_all, alpha=0.5, beta=0.5):
-    #     num, accuracy_without_id = self.compute_acc_diff(identity=identity,
-    #                                                      accuracy_with_all=accuracy_with_all)
-    #     # Denominator
-    #     energies_used = [self.last_iteration_consumption[w_id]['energy_used']
-    #                      for w_id in list(self.last_iteration_consumption.keys())]
-    #     times_taken = [self.last_iteration_consumption[w_id]['time_taken']
-    #                    for w_id in list(self.last_iteration_consumption.keys())]
-    #     max_energy = max(energies_used)
-    #     max_time = max(times_taken)
-    #     energy_used = self.last_iteration_consumption[identity]['energy_used']
-    #     time_taken = self.last_iteration_consumption[identity]['time_taken']
-    #     den = alpha * energy_used / max_energy + beta * time_taken / max_time
-    #     metric = num / den
-    #     dev_type = self.get_worker_by_id(identity).device_type
-    #     ene_pol = self.get_worker_by_id(identity).energy_policy
-    #     self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-    #                          'It used {:.3f} KJ and took {:.3f} seconds to train.\n'
-    #                          'The accuracy without him is {:.3f} and with him is {:.3f}.\n'
-    #                          'Therefore, its energy effectiveness score is {:.3f}'.format(identity,
-    #                                                                                       dev_type.upper(),
-    #                                                                                       ene_pol.upper(),
-    #                                                                                       energy_used/(1000*1000),
-    #                                                                                       time_taken,
-    #                                                                                       accuracy_without_id * 100,
-    #                                                                                       accuracy_with_all * 100,
-    #                                                                                       metric))
-    #     return metric
 
     def select_workers_based_on_energy_history(self, num_workers=20, alpha=0.5, beta=0.5, k=0.9, round_ind=-1):
         assert alpha >= 0 and beta >= 0
@@ -242,6 +195,101 @@ class Server:
             acc_diff, _ = self.compute_acc_diff(identity=w_id, accuracy_with_all=acc_with_all)
             self.get_worker_by_id(w_id).update_acc_diff_history(round_ind=round_ind-1,
                                                                 acc_diff=acc_diff)
+            
+    def compute_oort_metrics(self, identity, max_update_latency=None):
+        if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'It has never been selected for a federation round!'.format(identity,
+                                                                                             dev_type.upper(),
+                                                                                             ene_pol.upper()))
+            return 0
+        else:
+            energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
+            times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
+            oort_utils = {w.id: w.get_oort_utils() for w in self.possible_workers}
+            rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
+            last_round = sorted(list(set([r for device in rounds for r in device])))[-1]
+            time_taken = times_taken[identity][last_round]
+            oort_val = oort_utils[identity][last_round]
+            if max_update_latency is None:
+                metric = oort_val
+            else:
+                metric = oort_val * math.pow((max_update_latency/time_taken), 2*(1 if time_taken>max_update_latency else 0))
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'Its oort utility score is {:.3f}'.format(identity, dev_type.upper(),
+                                                                           ene_pol.upper(), metric))
+            return metric
+        
+    def select_workers_oort(self, num_workers=20, k=0.9, max_update_latency=None):
+        metrics = {}
+        for worker in self.possible_workers:
+            metrics[worker.id] = self.compute_oort_metrics(identity=worker.id,
+                                                           max_update_latency=max_update_latency)
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
+        for w_id, metric in metrics.items():
+            self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
+                                                                                                      metric))
+
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=True))
+        n_oort_workers = math.floor(num_workers * k)
+        n_random_workers = num_workers - n_oort_workers
+        self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+                                                                 n_best_workers=n_oort_workers,
+                                                                 n_random_workers=n_random_workers,
+                                                                 compute_p=True)
+        
+    def compute_oort_v2_metrics(self, identity, max_update_latency=None):
+        if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'It has never been selected for a federation round!'.format(identity,
+                                                                                             dev_type.upper(),
+                                                                                             ene_pol.upper()))
+            return 0
+        else:
+            energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
+            times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
+            oort_utils = {w.id: w.get_oort_utils() for w in self.possible_workers}
+            rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
+            last_round = sorted(list(set([r for device in rounds for r in device])))[-1]
+            time_taken = times_taken[identity][last_round]
+            oort_val = oort_utils[identity][last_round]
+            if max_update_latency is None:
+                metric = oort_val
+            else:
+                metric = oort_val * math.pow((max_update_latency/time_taken), 2*(1 if time_taken>max_update_latency else 0))
+            remaining_power_factors = {w.id: w.get_remaining_power_factor() for w in self.possible_workers}
+            remain_pow = remaining_power_factors[identity]
+            metric = 0.25 * metric + 0.75 * remain_pow
+            dev_type = self.get_worker_by_id(identity).device_type
+            ene_pol = self.get_worker_by_id(identity).energy_policy
+            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
+                                 'Its oort_v2 utility score is {:.3f}'.format(identity, dev_type.upper(),
+                                                                           ene_pol.upper(), metric))
+            return metric
+        
+    def select_workers_oort_v2(self, num_workers=20, k=0.9, max_update_latency=None):
+        metrics = {}
+        for worker in self.possible_workers:
+            metrics[worker.id] = self.compute_oort_v2_metrics(identity=worker.id,
+                                                           max_update_latency=max_update_latency)
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
+        for w_id, metric in metrics.items():
+            self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
+                                                                                                      metric))
+
+        metrics = dict(sorted(metrics.items(), key=lambda item: item[1], reverse=True))
+        n_oort_workers = math.floor(num_workers * k)
+        n_random_workers = num_workers - n_oort_workers
+        self.selected_workers = self.select_workers_from_metrics(metrics=metrics,
+                                                                 n_best_workers=n_oort_workers,
+                                                                 n_random_workers=n_random_workers,
+                                                                 compute_p=True)
 
     def get_selected_workers(self):
         return self.selected_workers
@@ -264,7 +312,8 @@ class Server:
                                 alpha=alpha,
                                 beta=beta,
                                 k=k,
-                                round_ind=round_ind)
+                                round_ind=round_ind,
+                                max_update_latency=max_update_latency)
         workers = self.selected_workers
         # w_ids = self.get_clients_info(workers)
         # self.logger.print_it('Selected workers: {}'.format(w_ids))
@@ -276,13 +325,14 @@ class Server:
                               'local_computations': 0} for w in workers}
 
         self.last_iteration_consumption = {w.id: {'energy_used': 0,
-                                                  'time_taken': 0} for w in workers}
+                                                  'time_taken': 0,
+                                                  'oort_utility': 0} for w in workers}
 
         self.last_updates = []
 
         def train_worker(worker):
             worker.set_weights(self.model.get_weights())
-            executed, energy_used, time_taken, comp, num_samples = worker.train(batch_size=batch_size,
+            executed, energy_used, time_taken, comp, num_samples, oort_utility = worker.train(batch_size=batch_size,
                                                                                 lr=lr,
                                                                                 round_ind=round_ind)
             sys_metrics[worker.id]['bytes_read'] += worker.model.size
@@ -294,6 +344,7 @@ class Server:
                 if (max_update_latency is not None and time_taken < max_update_latency) or max_update_latency is None \
                 else max_update_latency
             sys_metrics[worker.id]['local_computations'] = comp
+            self.last_iteration_consumption[worker.id]['oort_utility'] = oort_utility
             if (executed and max_update_latency is None) or (executed and time_taken < max_update_latency):
                 update = worker.get_weights()
                 self.updates.append((worker.id, num_samples, update))

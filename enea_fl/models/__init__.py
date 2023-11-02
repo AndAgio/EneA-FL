@@ -35,6 +35,7 @@ class WorkerModel:
         self._optimizer = optim.SGD(params=self.model.parameters(),
                                     lr=self.lr)
         self.criterion = nn.CrossEntropyLoss()
+        self.sample_criterion = nn.CrossEntropyLoss(reduction='none')
         self.processing_device = device
         self.logger = DumbLogger
 
@@ -61,6 +62,7 @@ class WorkerModel:
         running_loss = 0.
         counter = 0
         for epoch in range(epochs):
+            util_metric = 0.
             for batch_input, batch_label in batch_data(train_data, batch_size):
                 batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
                 self._optimizer.zero_grad()
@@ -70,6 +72,7 @@ class WorkerModel:
                 self._optimizer.step()
                 running_loss += loss.item()
                 last_loss = loss.item()
+                util_metric += torch.sum(torch.pow(self.sample_criterion(outputs, batch_label).detach().cpu(), 2)).item()
                 counter += 1
                 pred_labels = torch.argmax(outputs, dim=1)
                 predictions += pred_labels.detach().cpu().numpy().tolist()
@@ -79,6 +82,7 @@ class WorkerModel:
                            'f1': f1_score(np.asarray(labels_list), np.asarray(predictions), average='weighted')}
                 self.print_message(index_batch=counter, total_batches=tot_train_steps, metrics=metrics, mode='train')
         final_loss = running_loss / counter
+        metrics['util'] = len(train_data['y']) * math.sqrt(1/len(train_data['y'])*util_metric)
         return metrics
 
     def test_my_model(self, test_data, batch_size=10):

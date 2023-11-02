@@ -185,32 +185,65 @@ def run_nsim():
 def run_clients():
     datasets = ["mnist"]  # , "sent140"]
     n_experiments_for_setup = 10
-    os.makedirs(os.path.join('logs', 'clients'), exist_ok=True)
+    # os.makedirs(os.path.join('logs', 'clients', 'random'), exist_ok=True)
+    # for dataset in datasets:
+    #     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    #     clients = [i for i in range(10, 90, 10)]
+    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    #                 "--clients_per_round={} --lr=0.1 --policy='random'"
+    #                 " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+    #                                                                                    clients[i])
+    #                 for i in range(len(clients))
+    #                 for _ in range(n_experiments_for_setup)]
+    #     logfiles = ["logs/clients/random/d={}-c={}-({}).txt".format(dataset, clients[i], j)
+    #                 for i in range(len(clients))
+    #                 for j in range(n_experiments_for_setup)]
+    #     print('Number of experiments: {}.'.format(len(commands)))
+    #     run_in_batch(commands, logfiles)
+
+    # os.makedirs(os.path.join('logs', 'clients', 'enea'), exist_ok=True)
+    # for dataset in datasets:
+    #     print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    #     clients = [i for i in range(10, 90, 10)]
+    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    #                 "--clients_per_round={} --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+    #                 " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
+    #                                                                                    clients[i])
+    #                 for i in range(len(clients))
+    #                 for _ in range(n_experiments_for_setup)]
+    #     logfiles = ["logs/clients/enea/d={}-c={}-({}).txt".format(dataset, clients[i], j)
+    #                 for i in range(len(clients))
+    #                 for j in range(n_experiments_for_setup)]
+    #     print('Number of experiments: {}.'.format(len(commands)))
+    #     run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'clients', 'oort'), exist_ok=True)
     for dataset in datasets:
-        print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+        print('Running all experiments in parallel for dataset: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round={} --lr=0.1 --policy='random'"
+                    "--clients_per_round={} --lr=0.1 --policy='oort' --k=0.8"
                     " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
                                                                                        clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/clients/random-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/oort/d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))
         run_in_batch(commands, logfiles)
 
+    os.makedirs(os.path.join('logs', 'clients', 'oort_v2'), exist_ok=True)
     for dataset in datasets:
         print('Running all experiments in parallel for dataset: {}'.format(dataset))
         clients = [i for i in range(10, 90, 10)]
         commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round={} --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                    "--clients_per_round={} --lr=0.1 --policy='oort_v2' --k=0.8"
                     " --target_type='acc' --target_value=0.97  --batch_size=10".format(dataset,
                                                                                        clients[i])
                     for i in range(len(clients))
                     for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/clients/ene-d={}-c={}-({}).txt".format(dataset, clients[i], j)
+        logfiles = ["logs/clients/oort_v2/d={}-c={}-({}).txt".format(dataset, clients[i], j)
                     for i in range(len(clients))
                     for j in range(n_experiments_for_setup)]
         print('Number of experiments: {}.'.format(len(commands)))

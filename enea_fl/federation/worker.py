@@ -39,6 +39,7 @@ class Worker:
 
         self.used_energies = {}
         self.times_taken = {}
+        self.oort_utils = {}
         self.tot_used_energy = 0.
         self.tot_time_taken = 0.
         self.tot_rounds_enrolled = 0
@@ -56,8 +57,9 @@ class Worker:
             self.logger.print_it(' DEVICE IS DEAD! IT WILL NOT TRAIN THE MODEL! '.center(60, '-'))
             self.used_energies[round_ind] = 0
             self.times_taken[round_ind] = 0
+            self.oort_utils[round_ind] = 0
             self.tot_rounds_enrolled += 1
-            return False, 0, 0, 0, 0
+            return False, 0, 0, 0, 0, 0
         else:
             self.logger.print_it(' Training model at round {} '.format(round_ind).center(60, '-'))
             # train_steps = self.compute_local_energy_policy(batch_size=batch_size)
@@ -74,6 +76,7 @@ class Worker:
                                        tot_train_steps=train_steps,
                                        batch_size=batch_size,
                                        lr=lr)
+            oort_utility = metrics['util']
             energy_used, time_taken = self.compute_consumed_energy_and_time(n_samples=num_train_samples)
             comp = compute_total_number_of_flops(model=self.model.model,
                                                  batch_size=batch_size)
@@ -82,10 +85,11 @@ class Worker:
             self.used_energies[round_ind] = energy_used
             self.tot_time_taken += time_taken
             self.times_taken[round_ind] = time_taken
+            self.oort_utils[round_ind] = oort_utility
             self.tot_rounds_enrolled += 1
             self.check_death()
 
-            return True, energy_used, time_taken, comp, num_train_samples
+            return True, energy_used, time_taken, comp, num_train_samples, oort_utility
 
     def compute_consumed_energy_and_time(self, n_samples):
         if isinstance(self.model.model, FemnistModel):
@@ -181,6 +185,15 @@ class Worker:
 
     def get_times_taken(self):
         return self.times_taken
+
+    def get_oort_utils(self):
+        return self.oort_utils
+    
+    def get_remaining_power_factor(self):
+        if self.available_rounds != np.inf:
+            return (self.available_rounds-self.tot_rounds_enrolled)/self.available_rounds
+        else:
+            return 1/self.tot_rounds_enrolled if self.tot_rounds_enrolled != 0 else 1
 
     def get_tot_rounds_enrolled(self):
         return self.tot_rounds_enrolled
