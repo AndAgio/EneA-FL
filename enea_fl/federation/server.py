@@ -12,6 +12,7 @@ class Server:
         self.possible_workers = possible_workers if possible_workers is not None else []
         self.selected_workers = []
         self.last_updates = []
+        self.last_metrics = {worker.id: 0. for worker in self.possible_workers}
         self.updates = []
         self.last_iteration_consumption = {}
         self.local_test_data = test_data
@@ -197,21 +198,12 @@ class Server:
                                                                 acc_diff=acc_diff)
             
     def compute_oort_metrics(self, identity, max_update_latency=None):
-        if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
-            dev_type = self.get_worker_by_id(identity).device_type
-            ene_pol = self.get_worker_by_id(identity).energy_policy
-            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-                                 'It has never been selected for a federation round!'.format(identity,
-                                                                                             dev_type.upper(),
-                                                                                             ene_pol.upper()))
-            return 0
-        else:
+        try:
             energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
             times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
             oort_utils = {w.id: w.get_oort_utils() for w in self.possible_workers}
             rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
             rounds = sorted(list(set([r for device in rounds for r in device])))
-            self.logger.print_it('\n\nrounds: {}\n'.format(rounds))
             last_round = rounds[-1]
             time_taken = times_taken[identity][last_round]
             oort_val = oort_utils[identity][last_round]
@@ -225,12 +217,18 @@ class Server:
                                  'Its oort utility score is {:.3f}'.format(identity, dev_type.upper(),
                                                                            ene_pol.upper(), metric))
             return metric
+        except KeyError:
+            return 0
         
     def select_workers_oort(self, num_workers=20, k=0.9, max_update_latency=None):
         metrics = {}
         for worker in self.possible_workers:
-            metrics[worker.id] = self.compute_oort_metrics(identity=worker.id,
-                                                           max_update_latency=max_update_latency)
+            worker_oort = self.compute_oort_metrics(identity=worker.id, max_update_latency=max_update_latency)
+            if self.last_metrics[worker.id] != 0 and worker_oort == 0:
+                metrics[worker.id] = self.last_metrics[worker.id]
+            else:
+                metrics[worker.id] = worker_oort
+        self.last_metrics = metrics
         metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
         for w_id, metric in metrics.items():
             self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
@@ -245,20 +243,13 @@ class Server:
                                                                  compute_p=True)
         
     def compute_oort_v2_metrics(self, identity, max_update_latency=None):
-        if self.get_worker_by_id(identity).get_tot_rounds_enrolled() == 0:
-            dev_type = self.get_worker_by_id(identity).device_type
-            ene_pol = self.get_worker_by_id(identity).energy_policy
-            self.logger.print_it('Worker with identity "{}" is a {} with {} local energy policy.\n'
-                                 'It has never been selected for a federation round!'.format(identity,
-                                                                                             dev_type.upper(),
-                                                                                             ene_pol.upper()))
-            return 0
-        else:
+        try:
             energies_used = {w.id: w.get_energies_consumed() for w in self.possible_workers}
             times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
             oort_utils = {w.id: w.get_oort_utils() for w in self.possible_workers}
             rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
-            last_round = sorted(list(set([r for device in rounds for r in device])))[-1]
+            rounds = sorted(list(set([r for device in rounds for r in device])))
+            last_round = rounds[-1]
             time_taken = times_taken[identity][last_round]
             oort_val = oort_utils[identity][last_round]
             if max_update_latency is None:
@@ -274,12 +265,18 @@ class Server:
                                  'Its oort_v2 utility score is {:.3f}'.format(identity, dev_type.upper(),
                                                                            ene_pol.upper(), metric))
             return metric
+        except KeyError:
+            return 0
         
     def select_workers_oort_v2(self, num_workers=20, k=0.9, max_update_latency=None):
         metrics = {}
         for worker in self.possible_workers:
-            metrics[worker.id] = self.compute_oort_v2_metrics(identity=worker.id,
-                                                           max_update_latency=max_update_latency)
+            worker_oort = self.compute_oort_v2_metrics(identity=worker.id, max_update_latency=max_update_latency)
+            if self.last_metrics[worker.id] != 0 and worker_oort == 0:
+                metrics[worker.id] = self.last_metrics[worker.id]
+            else:
+                metrics[worker.id] = worker_oort
+        self.last_metrics = metrics
         metrics = dict(sorted(metrics.items(), key=lambda item: item[1]))
         for w_id, metric in metrics.items():
             self.logger.print_it('Worker with identity "{}" has effectiveness score of {:.3f}'.format(w_id,
