@@ -25,7 +25,7 @@ def run_all_sequential(commands, files):
 
 
 def run_in_batch(commands, logfiles):
-    batch = 8.
+    batch = 4.
     start_time = time.time()
     tot_batches = math.ceil(len(commands) / batch)
     for i in range(tot_batches):

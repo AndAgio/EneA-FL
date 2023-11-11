@@ -210,7 +210,9 @@ class Server:
             times_taken = {w.id: w.get_times_taken() for w in self.possible_workers}
             oort_utils = {w.id: w.get_oort_utils() for w in self.possible_workers}
             rounds = [list(energy_consumed.keys()) for _, energy_consumed in energies_used.items()]
-            last_round = sorted(list(set([r for device in rounds for r in device])))[-1]
+            rounds = sorted(list(set([r for device in rounds for r in device])))
+            self.logger.print_it('\n\nrounds: {}\n'.format(rounds))
+            last_round = rounds[-1]
             time_taken = times_taken[identity][last_round]
             oort_val = oort_utils[identity][last_round]
             if max_update_latency is None:
