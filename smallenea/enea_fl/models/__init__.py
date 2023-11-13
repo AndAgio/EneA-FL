@@ -2,6 +2,7 @@ import math
 
 from .femnist import CnnFemnist
 from .sent140 import CnnSent
+from .nbaiot import Nbaiot
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
 

@@ -11,9 +11,11 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import train_test_split
+
 from enea_fl.models.utils import batch_data, line_to_indices, get_word_emb_arr
-from enea_fl.models import CnnSent, CnnFemnist, SentConfig
+from enea_fl.models import CnnSent, CnnFemnist, SentConfig, Nbaiot
 from enea_fl.utils import get_logger, get_free_gpu
+from enea_fl.nbaiot_utils import read_nbaiot_data, nbaio_train_single_epoch, nbaio_test
 
 # SENT140
 # sleeping_time_selection = {
@@ -35,9 +37,30 @@ sleeping_time_selection = {
     5: 0,
 }
 
+def get_model(dataset, nbaiot_size):
+    if dataset == 'femnist':
+        return CnnFemnist()
+    elif dataset == 'sent140':
+        return CnnSent()
+    elif dataset == 'nbaiot':
+        return Nbaiot(nbaiot_size["train_loader"].dataset.tensors[0].shape[-1])
+    else:
+        raise ValueError('Dataset "{}" is not available!'.format(dataset))
+    
+def get_optimizer(dataset, model, lr):
+    if dataset == 'nbaiot':
+        return optim.SGD(params=model.parameters(),lr=0.1)
+    else:
+        return optim.SGD(params=model.parameters(), lr=lr)
+
 class Trainer:
     def __init__(self, dataset='femnist', lr=0.01, batch_size=10, is_iot=True, test_size=0.33, cpu=False):
-        assert dataset in ['femnist', 'sent140']
+        assert dataset in ['femnist', 'sent140', 'nbaiot']
+        self.train_data = None
+        self.val_data = None
+        self.test_data = None
+        self.indexization = None
+        self.final_data = None
         self.logger = get_logger(node_type='non_fl', node_id='0', log_folder=os.path.join('logs', dataset))
         self.logger.print_it('Istantiating a Trainer object for {} dataset!'.format(dataset))
         self.dataset = dataset
@@ -45,26 +68,29 @@ class Trainer:
         self.is_iot = is_iot
         self.test_size = test_size
         self.cpu = cpu
+        self.logger.print_it('Reading data...')
+        self.processing_device = self.choose_device()
+        if self.dataset == 'nbaiot':
+            try:
+                self.train_data, self.test_data, self.final_data = read_nbaiot_data("data/nbaiot", self.processing_device, self.batch_size, self.test_size, self.is_iot)
+            except Exception as e:
+                print(e)
+                print("Error during reading data!")
+                return
+        else:
+            self.read_data_from_dir()
         self.logger.print_it('Cleaning previous logger!')
         self.clean_previous_logger()
         self.logger.print_it('Istantiating a model!')
-        self.model = CnnFemnist() if dataset == 'femnist' else CnnSent()
+        self.model = get_model(dataset, self.final_data)
         self.logger.print_it('Model: {}'.format(self.model))
-        self.processing_device = self.choose_device()
         self.logger.print_it('Using a {} for training and inference!'.format(self.processing_device))
         self.model = self.model.to(self.processing_device)
         self.lr = lr
-        self._optimizer = optim.SGD(params=self.model.parameters(),
-                                    lr=self.lr)
+        self._optimizer = get_optimizer(self.dataset, self.model, self.lr)
         self.criterion = nn.CrossEntropyLoss()
-        self.train_data = None
-        self.val_data = None
-        self.test_data = None
-        self.read_data_from_dir()
         if self.dataset == 'sent140':
             self.indexization = self.gather_indexization()
-        else:
-            self.indexization = None
 
         self.epoch_timestamps = []
         self.sample_per_epochs = []
@@ -135,6 +161,7 @@ class Trainer:
     def train(self, epochs=100, batch_size=10, simulate_selection=False):
         self.logger.print_it(' Start training '.center(60, '-'))
         self.epoch_timestamps.append(time.time())
+
         for epoch in range(epochs):
             self.logger.print_it(' | Epoch: {}/{} | LR = {:.5f} | BATCH = {} | '.format(epoch + 1,
                                                                                         epochs,
@@ -142,7 +169,10 @@ class Trainer:
                                                                                         batch_size).center(60, '-'))
             # Simulate server model training on selected clients' data
             try:
-                final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
+                if self.dataset == 'nbaiot':
+                    nbaio_train_single_epoch(self)
+                else:
+                    final_loss, _, _, _ = self.train_single_epoch(batch_size=batch_size)
             except Exception as e:
                 self.logger.print_it('Error during training: {}'.format(e))
                 continue
@@ -193,6 +223,9 @@ class Trainer:
         return final_loss, energy, stop - start, comp
 
     def test_model(self, batch_size=10):
+        if self.dataset == 'nbaiot':
+            return nbaio_test(self.model, self.test_data, self.criterion)
+
         predictions = []
         labels_list = []
         self.model.eval()
@@ -255,9 +288,13 @@ class Trainer:
     def print_message(self, index_batch, batch_size, metrics, mode='train'):
         message = '|'
         bar_length = 10
-        total_samples = len(self.train_data['x']) if mode == 'train' else len(
+        if self.dataset == 'nbaiot':
+            total_samples = len(self.train_data) if mode == 'train' else len(self.test_data)
+            total_batches = math.ceil(total_samples)
+        else:
+            total_samples = len(self.train_data['x']) if mode == 'train' else len(
             self.test_data['x']) if mode == 'test' else len(self.val_data['x'])
-        total_batches = math.ceil(total_samples / batch_size)
+            total_batches = math.ceil(total_samples / batch_size)
         progress = float(index_batch) / float(total_batches)
         if progress >= 1.:
             progress = 1
@@ -273,6 +310,7 @@ class Trainer:
                                                                ',' if index < len(metrics.keys()) - 1 else '')
                 index += 1
             message += train_metrics_message
+            message += (str(index_batch) + "/" + str(total_batches))
         message += '|'.ljust(60)
         self.logger.print_it_same_line(message)
 
@@ -290,22 +328,26 @@ class Trainer:
     def warm_up_model(self):
         self.logger.print_it('Warming up model...')
         self.model.train()
-        i = 0
-        for batch_input, batch_label in batch_data(self.train_data, 10):
-            if i == 100:
-                break
-            batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
-            self.model(batch_input)
-            i += 1
+
+        if self.dataset == 'nbaiot':
+            nbaio_train_single_epoch(self, warm_up=True)
+        else:
+            i = 0
+            for batch_input, batch_label in batch_data(self.train_data, 10):
+                if i == 100:
+                    break
+                batch_input, batch_label = self.preprocess_input_output(batch_input, batch_label)
+                self.model(batch_input)
+                i += 1
         self.logger.print_it('Model warmed up!')
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist'], required=True)
+    parser.add_argument('--dataset', help='name of dataset;', type=str, choices=['sent140', 'femnist', 'nbaiot'], required=True)
     parser.add_argument('--epochs', help='number of epochs;', type=int, default=100)
     parser.add_argument('--test_size', help='test size;', type=float, default=0.33)
-    parser.add_argument('--iot', help='number of epochs;', type=bool, default=True)
-    parser.add_argument('--cpu', help='number of epochs;', type=bool, default=False)
+    parser.add_argument('--iot', help='is this iot;', type=str, default="True")
+    parser.add_argument('--cpu', help='number of epochs;', type=str, default="False")
     parser.add_argument('--simulate_selection', help='simulate client selection;', type=bool, default=False)
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
@@ -314,13 +356,22 @@ def parse_args():
 def main():
     print("Parsing args...")
     args = parse_args()
+    print("args", args)
     print("Creating trainer...")
-    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=args.iot, test_size=args.test_size, cpu=args.cpu)
-    my_trainer.warm_up_model()
+    my_trainer = Trainer(dataset=args.dataset, lr=args.lr, batch_size=args.batch_size, is_iot=(args.iot == "True"), test_size=args.test_size, cpu=(args.cpu == "True"))
+   
+    print("Warming up model...")
+    try:
+        my_trainer.warm_up_model()
+    except Exception as e:
+        print(e)
+        print("Error during warm up!")
+        return
+
     print("Training...")
     my_trainer.train(epochs=args.epochs,
-                     batch_size=args.batch_size,
-                     simulate_selection=args.simulate_selection)
+                    batch_size=args.batch_size,
+                    simulate_selection=args.simulate_selection)
     print("----------------- my_trainer.epoch_timestamps -----------------")
     for i, e in enumerate(my_trainer.epoch_timestamps):
         print(i, ")", e)
@@ -330,6 +381,9 @@ def main():
     print("-------------------------")
     print("Done!")
     print("-------------------------")
+
+    metrics = nbaio_test(my_trainer)
+    print("metrics", metrics)
 
 
 if __name__ == '__main__':
