@@ -1,6 +1,9 @@
-numpy==1.24.3
-Pillow==9.5.0
-scikit-learn==1.2.2
-pandas==2.0.2
-config_parser==0.0.1
+joblib==1.2.0
 matplotlib==3.7.1
+numpy==1.24.3
+pandas==2.0.2
+Pillow==9.5.0
+prometheus_client==0.17.1
+scikit_learn==1.2.2
+scipy==1.11.3
+torch==2.0.1+cu118

@@ -28,12 +28,22 @@ from enea_fl.nbaiot_utils import read_nbaiot_data, nbaio_train_single_epoch, nba
 # }
 
 # FEMNIST
+# sleeping_time_selection = {
+#     0: 0,
+#     1: 30,
+#     2: 30,
+#     3: 60,
+#     4: 0,
+#     5: 0,
+# }
+
+# NBAIOT
 sleeping_time_selection = {
     0: 0,
     1: 30,
-    2: 30,
-    3: 60,
-    4: 0,
+    2: 0,
+    3: 30,
+    4: 60,
     5: 0,
 }
 
@@ -68,9 +78,15 @@ class Trainer:
         self.is_iot = is_iot
         self.test_size = test_size
         self.cpu = cpu
-        self.logger.print_it('Reading data...')
-        self.processing_device = self.choose_device()
+        self.logger.print_it('Reading data asd...')
+        try:
+            self.processing_device = self.choose_device()
+        except Exception as e:
+            print(e)
+            print("Error during reading data!")
+            return
         if self.dataset == 'nbaiot':
+            self.logger.print_it('NBAIOT dataset!')
             try:
                 self.train_data, self.test_data, self.final_data = read_nbaiot_data("data/nbaiot", self.processing_device, self.batch_size, self.test_size, self.is_iot)
             except Exception as e:
@@ -348,7 +364,7 @@ def parse_args():
     parser.add_argument('--test_size', help='test size;', type=float, default=0.33)
     parser.add_argument('--iot', help='is this iot;', type=str, default="True")
     parser.add_argument('--cpu', help='number of epochs;', type=str, default="False")
-    parser.add_argument('--simulate_selection', help='simulate client selection;', type=bool, default=False)
+    parser.add_argument('--simulate_selection', help='simulate client selection;', type=str, default="False")
     parser.add_argument('--batch_size', help='batch size when clients train on data;', type=int, default=10)
     parser.add_argument('--lr', help='learning rate for local optimizers;', type=float, default=-1, required=False)
     return parser.parse_args()
@@ -371,7 +387,7 @@ def main():
     print("Training...")
     my_trainer.train(epochs=args.epochs,
                     batch_size=args.batch_size,
-                    simulate_selection=args.simulate_selection)
+                    simulate_selection=(args.simulate_selection=="True"))
     print("----------------- my_trainer.epoch_timestamps -----------------")
     for i, e in enumerate(my_trainer.epoch_timestamps):
         print(i, ")", e)

@@ -63,11 +63,11 @@ if __name__ == "__main__":
 
     # raspberry pi 4
     # TARGET = "128.195.55.248:8000"
-    TARGET = "192.168.1.30:9877"
+    # TARGET = "192.168.1.30:9877"
     
     # jetson nano
     # TARGET = "128.195.55.244:9877"
-    # TARGET = "192.168.1.10:9877"
+    TARGET = "192.168.1.10:9877"
 
     # jetson orin
     # TARGET = "128.195.55.253:9877"

@@ -134,6 +134,7 @@ def nbaio_train_single_epoch(trainer, warm_up=False):
     for train_batch_x, train_batch_y in trainer.train_data:
         trainer._optimizer.zero_grad()
         pred = trainer.model(train_batch_x)
+        print("train_batch_x shape", train_batch_x.shape)
         pred = torch.squeeze(pred)
         loss = trainer.criterion(pred, train_batch_y)
         loss.backward()
