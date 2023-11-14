@@ -21,3 +21,4 @@ if [ ! -d "../data/all_data" ]; then
   python3 data_to_json.py
   echo "finished converting data to .json format"
 fi
+
