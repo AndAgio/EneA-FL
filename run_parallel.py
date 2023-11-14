@@ -371,7 +371,7 @@ def run_energy_budget_nbaiot():
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'random'), exist_ok=True)
     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='random'"
                 " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -382,7 +382,7 @@ def run_energy_budget_nbaiot():
 
     os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'enea'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -393,7 +393,7 @@ def run_energy_budget_nbaiot():
 
     os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'oort'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -404,7 +404,7 @@ def run_energy_budget_nbaiot():
 
     os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'oort_v2'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -515,7 +515,7 @@ def run_time_budget_nbaiot():
     n_experiments_for_setup = 10
     os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'random'), exist_ok=True)
     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='random'"
                 " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -526,7 +526,7 @@ def run_time_budget_nbaiot():
 
     os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'enea'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -537,7 +537,7 @@ def run_time_budget_nbaiot():
     
     os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'oort'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
@@ -548,7 +548,7 @@ def run_time_budget_nbaiot():
     
     os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'oort_v2'), exist_ok=True)
     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=10000 --sampling_mode='iid+sim' "
                 "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
                 " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
                 for _ in range(n_experiments_for_setup)]
