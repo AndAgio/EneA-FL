@@ -191,7 +191,10 @@ class Worker:
     
     def get_remaining_power_factor(self):
         if self.available_rounds != np.inf:
-            return (self.available_rounds-self.tot_rounds_enrolled)/self.available_rounds
+            try:
+                return (self.available_rounds-self.tot_rounds_enrolled)/self.available_rounds
+            except ZeroDivisionError:
+                return 0.
         else:
             return 1/self.tot_rounds_enrolled if self.tot_rounds_enrolled != 0 else 1
 
