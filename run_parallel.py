@@ -318,108 +318,292 @@ def run_death():
         run_in_batch(commands, logfiles)
 
 
-def run_energy_budget():
-    datasets = ["mnist"] # ["sent140"]  # ["nbaiot"]
+def run_energy_budget_mnist():
+    dataset = "mnist"
     n_experiments_for_setup = 10
-    # os.makedirs(os.path.join('logs', 'energy_budget', 'random'), exist_ok=True)
-    # for dataset in datasets:
-    #     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-    #                 "--clients_per_round=20 --lr=0.1 --policy='random'"
-    #                 " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
-    #                 for _ in range(n_experiments_for_setup)]
-    #     logfiles = ["logs/energy_budget/random/d={}-ene-({}).txt".format(dataset, j)
-    #                 for j in range(n_experiments_for_setup)]
-    #     print('Number of experiments: {}.'.format(len(commands)))
-    #     run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_mnist', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_mnist/random/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
-    # os.makedirs(os.path.join('logs', 'energy_budget', 'enea'), exist_ok=True)
-    # for dataset in datasets:
-    #     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-    #                 "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-    #                 " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
-    #                 for _ in range(n_experiments_for_setup)]
-    #     logfiles = ["logs/energy_budget/enea/d={}-ene-({}).txt".format(dataset, j)
-    #                 for j in range(n_experiments_for_setup)]
-    #     print('Number of experiments: {}.'.format(len(commands)))
-    #     run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_mnist', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_mnist/enea/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
-    os.makedirs(os.path.join('logs', 'energy_budget', 'oort'), exist_ok=True)
-    for dataset in datasets:
-        print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
-                    for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/energy_budget/oort/d={}-ene-({}).txt".format(dataset, j)
-                    for j in range(n_experiments_for_setup)]
-        print('Number of experiments: {}.'.format(len(commands)))
-        run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_mnist', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_mnist/oort/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
-    os.makedirs(os.path.join('logs', 'energy_budget', 'oort_v2'), exist_ok=True)
-    for dataset in datasets:
-        print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
-                    for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/energy_budget/oort_v2/d={}-ene-({}).txt".format(dataset, j)
-                    for j in range(n_experiments_for_setup)]
-        print('Number of experiments: {}.'.format(len(commands)))
-        run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_mnist', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=1000000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_mnist/oort_v2/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
-def run_time_budget():
-    datasets = ["mnist"] # ["sent140"]  # , "mnist"]
+
+def run_energy_budget_nbaiot():
+    dataset = "nbaiot"
     n_experiments_for_setup = 10
-    # os.makedirs(os.path.join('logs', 'time_budget', 'random'), exist_ok=True)
-    # for dataset in datasets:
-    #     print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
-    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-    #                 "--clients_per_round=20 --lr=0.1 --policy='random'"
-    #                 " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
-    #                 for _ in range(n_experiments_for_setup)]
-    #     logfiles = ["logs/time_budget/random/d={}-time-({}).txt".format(dataset, j)
-    #                 for j in range(n_experiments_for_setup)]
-    #     print('Number of experiments: {}.'.format(len(commands)))
-    #     run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_nbaiot/random/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
-    # os.makedirs(os.path.join('logs', 'time_budget', 'enea'), exist_ok=True)
-    # for dataset in datasets:
-    #     print('Running all experiments in parallel for dataset: {}'.format(dataset))
-    #     commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-    #                 "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
-    #                 " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
-    #                 for _ in range(n_experiments_for_setup)]
-    #     logfiles = ["logs/time_budget/enea/d={}-time-({}).txt".format(dataset, j)
-    #                 for j in range(n_experiments_for_setup)]
-    #     print('Number of experiments: {}.'.format(len(commands)))
-    #     run_in_batch(commands, logfiles)
-    
-    os.makedirs(os.path.join('logs', 'time_budget', 'oort'), exist_ok=True)
-    for dataset in datasets:
-        print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
-                    for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/time_budget/oort/d={}-time-({}).txt".format(dataset, j)
-                    for j in range(n_experiments_for_setup)]
-        print('Number of experiments: {}.'.format(len(commands)))
-        run_in_batch(commands, logfiles)
-    
-    os.makedirs(os.path.join('logs', 'time_budget', 'oort_v2'), exist_ok=True)
-    for dataset in datasets:
-        print('Running all experiments in parallel for dataset: {}'.format(dataset))
-        commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
-                    "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
-                    " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
-                    for _ in range(n_experiments_for_setup)]
-        logfiles = ["logs/time_budget/oort_v2/d={}-time-({}).txt".format(dataset, j)
-                    for j in range(n_experiments_for_setup)]
-        print('Number of experiments: {}.'.format(len(commands)))
-        run_in_batch(commands, logfiles)
+    os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_nbaiot/enea/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
+    os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_nbaiot/oort/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'energy_budget_nbaiot', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=5000000  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_nbaiot/oort_v2/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+
+def run_energy_budget_sent():
+    dataset = "sent140"
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'energy_budget_sent140', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_sent140/random/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'energy_budget_sent140', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_sent140/enea/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'energy_budget_sent140', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_sent140/oort/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'energy_budget_sent140', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='energy' --target_value=500000000  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/energy_budget_sent140/oort_v2/d={}-ene-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+
+def run_time_budget_mnist():
+    dataset = "mnist"
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'time_budget_mnist', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_mnist/random/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'time_budget_mnist', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_mnist/enea/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+    
+    os.makedirs(os.path.join('logs', 'time_budget_mnist', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_mnist/oort/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'time_budget_mnist', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=28800  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_mnist/oort_v2/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+
+def run_time_budget_nbaiot():
+    dataset = "nbaiot"
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_nbaiot/random/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_nbaiot/enea/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+    
+    os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_nbaiot/oort/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+    
+    os.makedirs(os.path.join('logs', 'time_budget_nbaiot', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=120  --batch_size=10 --orin_gpu_p=0 --orin_cpu_p=0 --raspberry_p=0.2 --nano_cpu_p=0.2 --xavier_cpu_p=0.2 --xavier_gpu_p=0.2 --nano_gpu_p=0.2".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_nbaiot/oort_v2/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+
+def run_time_budget_sent():
+    dataset = "sent140"
+    n_experiments_for_setup = 10
+    os.makedirs(os.path.join('logs', 'time_budget_sent', 'random'), exist_ok=True)
+    print('Running all experiments in parallel for dataset and random sampling: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='random'"
+                " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_sent/random/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+
+    os.makedirs(os.path.join('logs', 'time_budget_sent', 'enea'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='energy_aware' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_sent/enea/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+    
+    os.makedirs(os.path.join('logs', 'time_budget_sent', 'oort'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_sent/oort/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
+    
+    os.makedirs(os.path.join('logs', 'time_budget_sent', 'oort_v2'), exist_ok=True)
+    print('Running all experiments in parallel for dataset: {}'.format(dataset))
+    commands = ["python main.py --dataset='{}' --num_workers=100 --max_spw=1000 --sampling_mode='iid+sim' "
+                "--clients_per_round=20 --lr=0.1 --policy='oort_v2' --alpha=0.6 --beta=40 --k=0.8"
+                " --target_type='time' --target_value=14400  --batch_size=10".format(dataset)
+                for _ in range(n_experiments_for_setup)]
+    logfiles = ["logs/time_budget_sent/oort_v2/d={}-time-({}).txt".format(dataset, j)
+                for j in range(n_experiments_for_setup)]
+    print('Number of experiments: {}.'.format(len(commands)))
+    run_in_batch(commands, logfiles)
 
 def run_acc_target():
     datasets = ["sent140"]  # , "mnist"]
@@ -480,10 +664,18 @@ if __name__ == '__main__':
         run_death()
     elif options.experiment.lower() in ['dev_p']:
         run_dev_ps()
-    elif options.experiment.lower() in ['energy_budget']:
-        run_energy_budget()
-    elif options.experiment.lower() in ['time_budget']:
-        run_time_budget()
+    elif options.experiment.lower() in ['energy_budget_mnist']:
+        run_energy_budget_mnist()
+    elif options.experiment.lower() in ['energy_budget_sent']:
+        run_energy_budget_sent()
+    elif options.experiment.lower() in ['energy_budget_nbaiot']:
+        run_energy_budget_nbaiot()
+    elif options.experiment.lower() in ['time_budget_mnist']:
+        run_time_budget_mnist()
+    elif options.experiment.lower() in ['time_budget_sent']:
+        run_time_budget_sent()
+    elif options.experiment.lower() in ['time_budget_nbaiot']:
+        run_time_budget_nbaiot()
     elif options.experiment.lower() in ['acc_target']:
         run_acc_target()
     else:
