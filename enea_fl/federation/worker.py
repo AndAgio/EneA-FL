@@ -7,7 +7,7 @@ from scipy.stats import expon
 
 from enea_fl.utils import DumbLogger, compute_total_number_of_flops, \
     read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
-from enea_fl.models import FemnistModel, MnistModel
+from enea_fl.models import FemnistModel, MnistModel, NbaiotModel
 
 
 class Worker:
@@ -96,6 +96,8 @@ class Worker:
             dataset = 'femnist'
         elif isinstance(self.model.model, MnistModel):
             dataset = 'mnist'
+        elif isinstance(self.model.model, NbaiotModel):
+            dataset = 'nbaiot'
         else:
             dataset = 'sent140'
         device_behaviour_files = read_device_behaviours(device_type=self.device_type,

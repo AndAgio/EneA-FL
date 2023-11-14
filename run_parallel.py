@@ -319,7 +319,7 @@ def run_death():
 
 
 def run_energy_budget():
-    datasets = ["mnist"] # ["sent140"]  # , "mnist"]
+    datasets = ["mnist"] # ["sent140"]  # ["nbaiot"]
     n_experiments_for_setup = 10
     # os.makedirs(os.path.join('logs', 'energy_budget', 'random'), exist_ok=True)
     # for dataset in datasets:
