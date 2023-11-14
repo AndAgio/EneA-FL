@@ -17,9 +17,6 @@ with open(data_dir, 'rt', encoding='ISO-8859-1') as f:
     reader = csv.reader(f)
     data = list(reader)
 
-# ------------
-# get # of users in data, and list of users (note automatically sorted)
-
 num_users = 1
 users = ['0']
 num_samples = len(data) - 1
@@ -62,9 +59,6 @@ for u in users:
         user_data[u]['y'].append(int(ys[row_i]))
 
         row_i += 1
-
-# ------------
-# create .json file
 
 all_data = {}
 all_data['users'] = users
