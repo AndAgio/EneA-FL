@@ -4,6 +4,7 @@ import copy
 from .femnist import FemnistModel
 from .mnist import MnistModel
 from .sent140 import SentModel
+from .nbaiot import NbaiotModel
 from .utils import read_data, batch_data, get_word_emb_arr, line_to_indices
 from .config_files import SentConfig
 
@@ -17,7 +18,7 @@ from enea_fl.utils import DumbLogger
 
 class WorkerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu', lr=0.01):
-        assert dataset in ['femnist', 'mnist', 'sent140']
+        assert dataset in ['femnist', 'mnist', 'sent140', 'nbaiot']
         self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
@@ -29,6 +30,8 @@ class WorkerModel:
             self.model = FemnistModel()
         elif dataset == 'mnist':
             self.model = MnistModel()
+        elif dataset == 'nbaiot':
+            self.model = NbaiotModel()
         else:
             self.model = SentModel(embs=self.embs)
         self.lr = lr
@@ -160,6 +163,11 @@ class WorkerModel:
             inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels
+        elif self.dataset == 'nbaiot':
+            inputs = torch.from_numpy(np.array(batch_input))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
         elif self.dataset == 'sent140':
             x_batch = [e[4] for e in batch_input]
             x_batch = [line_to_indices(e, self.indexization, max_words=SentConfig().max_sen_len) for e in x_batch]
@@ -197,7 +205,7 @@ class WorkerModel:
 
 class ServerModel:
     def __init__(self, dataset='femnist', glove_array=None, device='cpu'):
-        assert dataset in ['femnist', 'mnist', 'sent140']
+        assert dataset in ['femnist', 'mnist', 'sent140', 'nbaiot']
         self.dataset = dataset
         if dataset == 'sent140' and glove_array is None:
             raise ValueError('Glove array should be a valid input when'
@@ -209,6 +217,8 @@ class ServerModel:
             self.model = FemnistModel()
         elif dataset == 'mnist':
             self.model = MnistModel()
+        elif dataset == 'nbaiot':
+            self.model = NbaiotModel()
         else:
             self.model = SentModel(embs=self.embs)
         self.processing_device = device
@@ -253,6 +263,11 @@ class ServerModel:
     def preprocess_input_output(self, batch_input, batch_output):
         if self.dataset in ['femnist', 'mnist']:
             inputs = torch.from_numpy(np.array(batch_input).reshape((len(batch_input), 1, 28, 28)))
+            inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
+            labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
+            return inputs, labels
+        elif self.dataset == 'nbaiot':
+            inputs = torch.from_numpy(np.array(batch_input))
             inputs = inputs.type(torch.FloatTensor).to(self.processing_device)
             labels = torch.from_numpy(np.array(batch_output)).to(self.processing_device)
             return inputs, labels

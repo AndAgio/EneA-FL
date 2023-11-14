@@ -7,7 +7,7 @@ from scipy.stats import expon
 
 from enea_fl.utils import DumbLogger, compute_total_number_of_flops, \
     read_device_behaviours, get_average_energy, compute_avg_std_time_per_sample
-from enea_fl.models import FemnistModel, MnistModel
+from enea_fl.models import FemnistModel, MnistModel, NbaiotModel
 
 
 class Worker:
@@ -96,6 +96,8 @@ class Worker:
             dataset = 'femnist'
         elif isinstance(self.model.model, MnistModel):
             dataset = 'mnist'
+        elif isinstance(self.model.model, NbaiotModel):
+            dataset = 'nbaiot'
         else:
             dataset = 'sent140'
         device_behaviour_files = read_device_behaviours(device_type=self.device_type,
@@ -191,7 +193,10 @@ class Worker:
     
     def get_remaining_power_factor(self):
         if self.available_rounds != np.inf:
-            return (self.available_rounds-self.tot_rounds_enrolled)/self.available_rounds
+            try:
+                return (self.available_rounds-self.tot_rounds_enrolled)/self.available_rounds
+            except ZeroDivisionError:
+                return 0.
         else:
             return 1/self.tot_rounds_enrolled if self.tot_rounds_enrolled != 0 else 1
 
