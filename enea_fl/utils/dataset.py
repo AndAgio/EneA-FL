@@ -12,11 +12,11 @@ def tot_samples_dataset(dataset='femnist', size='small'):
             raise ValueError('Size "{}" is not available for dataset "{}"!'.format(size, dataset))
     elif dataset == 'nbaiot':
         if size == 'small':
-            return 18498
+            return 2071
         elif size == 'medium':
-            return 36996
+            return 4142
         elif size == 'big':
-            return 55494
+            return 6212
         else:
             raise ValueError('Size "{}" is not available for dataset "{}"!'.format(size, dataset))
     elif dataset == 'sent140':

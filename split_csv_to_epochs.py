@@ -5,7 +5,7 @@ import pandas as pd
 BASE_DIR = "reports/"
 DEVICES = ["cpu/", "gpu/"]
 # IOT_MODELS = ["jetson_nano/", "raspberrypi/", "jetson_orin/"]
-IOT_MODELS = ["jetson_xavier/"]
+IOT_MODELS = ["jetson_orin/"]
 #%%
 def get_epoch_timestamps(data):
     timestamps = []
