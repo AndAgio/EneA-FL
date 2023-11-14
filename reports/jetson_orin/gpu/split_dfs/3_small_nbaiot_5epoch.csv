@@ -1,1 +1,3 @@
 energon_total_in_power_mW,energon_cpu_in_power_mW,energon_gpu_in_power_mW,energon_cpu_total_usage_percentage,energon_gpu_total_usage_percentage,energon_ram_used_percentage,timestamp
+50048,19984,19984,8.208955223880599,38.0,68.09399811247744,1688528071.314
+50048,19984,19984,8.049792531120337,42.5,68.09146949633286,1688528070.312
