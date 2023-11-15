@@ -63,7 +63,12 @@ def compute_avg_std_time_per_sample(device_behaviour_files, dataset_size, datase
                                         size=size)
         behaviour_data = pd.read_csv(file)
         timestamps = list(behaviour_data['timestamp'])
-        times[size].append((timestamps[-1] - timestamps[0])/n_samples)
+        try:
+            times[size].append((timestamps[-1] - timestamps[0])/n_samples)
+        except IndexError:
+            print('file: {}'.format(file))
+            print('timestamps: {}'.format(timestamps))
+            raise IndexError('My index error')
 
     avg_times = {size: [] for size in sizes}
     std_times = {size: [] for size in sizes}
